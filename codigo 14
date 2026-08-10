@@ -1,0 +1,337 @@
+/************************************************************
+ * ARQUIVO: Dashboard.gs
+ * Projeto: Gestão de Sala Escolar
+ * Dashboard e Indicadores
+ ************************************************************/
+
+/**
+ * Dashboard principal
+ */
+function dashboardPrincipal() {
+
+  return {
+
+    sistema: NOME_SISTEMA,
+
+    versao: VERSAO,
+
+    dataAtual: Utilities.formatDate(
+      new Date(),
+      Session.getScriptTimeZone(),
+      "dd/MM/yyyy HH:mm"
+    ),
+
+    usuario: getUsuarioLogado(),
+
+    cards: obterCards(),
+
+    graficos: obterGraficos()
+
+  };
+
+}
+
+/**
+ * Cards do Dashboard
+ */
+function obterCards() {
+
+  return {
+
+    alunos: totalAlunos(),
+
+    professores: totalProfessores(),
+
+    turmas: totalTurmas(),
+
+    disciplinas: totalDisciplinas(),
+
+    atividades: estatisticasAtividades().total,
+
+    ocorrencias: estatisticasOcorrencias().total,
+
+    notas: listarNotas().length,
+
+    frequencias: listarFrequencias().length
+
+  };
+
+}
+
+/**
+ * Dados para gráficos
+ */
+function obterGraficos() {
+
+  return {
+
+    alunosPorTurma: graficoAlunosPorTurma(),
+
+    notas: graficoNotas(),
+
+    frequencia: graficoFrequencia(),
+
+    ocorrencias: graficoOcorrencias(),
+
+    atividades: graficoAtividades()
+
+  };
+
+}
+
+/**
+ * Gráfico de alunos por turma
+ */
+function graficoAlunosPorTurma() {
+
+  const dados = totalPorTurma();
+
+  let categorias = [];
+
+  let valores = [];
+
+  Object.keys(dados).forEach(function(turma){
+
+    categorias.push(turma);
+
+    valores.push(dados[turma]);
+
+  });
+
+  return {
+
+    categorias: categorias,
+
+    valores: valores
+
+  };
+
+}
+
+/**
+ * Gráfico de notas
+ */
+function graficoNotas() {
+
+  const est = estatisticasNotas();
+
+  return {
+
+    categorias: [
+
+      "Aprovados",
+
+      "Recuperação",
+
+      "Reprovados"
+
+    ],
+
+    valores: [
+
+      est.aprovados,
+
+      est.recuperacao,
+
+      est.reprovados
+
+    ]
+
+  };
+
+}
+
+/**
+ * Gráfico frequência
+ */
+function graficoFrequencia() {
+
+  const est = estatisticasFrequencia();
+
+  return {
+
+    categorias: [
+
+      "Presentes",
+
+      "Faltas",
+
+      "Atrasos",
+
+      "Justificadas"
+
+    ],
+
+    valores: [
+
+      est.presentes,
+
+      est.faltas,
+
+      est.atrasos,
+
+      est.justificadas
+
+    ]
+
+  };
+
+}
+
+/**
+ * Gráfico ocorrências
+ */
+function graficoOcorrencias() {
+
+  const est = estatisticasOcorrencias();
+
+  return {
+
+    categorias: [
+
+      "Abertas",
+
+      "Encerradas"
+
+    ],
+
+    valores: [
+
+      est.abertas,
+
+      est.encerradas
+
+    ]
+
+  };
+
+}
+
+/**
+ * Gráfico atividades
+ */
+function graficoAtividades() {
+
+  const est = estatisticasAtividades();
+
+  return {
+
+    categorias: [
+
+      "Pendentes",
+
+      "Entregues",
+
+      "Atrasadas"
+
+    ],
+
+    valores: [
+
+      est.pendentes,
+
+      est.entregues,
+
+      est.atrasadas
+
+    ]
+
+  };
+
+}
+
+/**
+ * Últimos alunos cadastrados
+ */
+function ultimosAlunos(limite) {
+
+  limite = limite || 5;
+
+  const lista = listarAlunos();
+
+  return lista.slice(-limite).reverse();
+
+}
+
+/**
+ * Últimas ocorrências
+ */
+function ultimasOcorrencias(limite) {
+
+  limite = limite || 5;
+
+  const lista = listarOcorrencias();
+
+  return lista.slice(-limite).reverse();
+
+}
+
+/**
+ * Últimas atividades
+ */
+function ultimasAtividades(limite) {
+
+  limite = limite || 5;
+
+  const lista = listarAtividades();
+
+  return lista.slice(-limite).reverse();
+
+}
+
+/**
+ * Indicadores rápidos
+ */
+function indicadoresRapidos() {
+
+  return {
+
+    mediaTurmas: Number(
+      (
+        totalAlunos() /
+        Math.max(totalTurmas(),1)
+      ).toFixed(1)
+    ),
+
+    mediaNotas: calcularMediaGeral(),
+
+    totalUsuarios: contar(ABAS.USUARIOS),
+
+    dataAtualizacao: Utilities.formatDate(
+
+      new Date(),
+
+      Session.getScriptTimeZone(),
+
+      "dd/MM/yyyy HH:mm:ss"
+
+    )
+
+  };
+
+}
+
+/**
+ * Média geral das notas
+ */
+function calcularMediaGeral() {
+
+  const lista = listarNotas();
+
+  if(lista.length==0){
+
+    return 0;
+
+  }
+
+  let soma = 0;
+
+  lista.forEach(function(item){
+
+    soma += Number(item.Media);
+
+  });
+
+  return Number((soma/lista.length).toFixed(2));
+
+}
