@@ -1,0 +1,129 @@
+/*******************************************************
+ * ARQUIVO: Main.gs
+ * Projeto: Gestão de Sala Escolar
+ * Autor: ChatGPT
+ *******************************************************/
+
+/**
+ * Página inicial do sistema
+ */
+function doGet() {
+
+  return HtmlService.createTemplateFromFile("Index")
+    .evaluate()
+    .setTitle("Gestão de Sala Escolar")
+    .setFaviconUrl("https://ssl.gstatic.com/docs/doclist/images/mediatype/icon_1_spreadsheet_x16.png")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Permite incluir arquivos HTML
+ * Exemplo:
+ * <?!= include('Style'); ?>
+ * <?!= include('Script'); ?>
+ */
+function include(nomeArquivo){
+  return HtmlService
+    .createHtmlOutputFromFile(nomeArquivo)
+    .getContent();
+}
+
+/**
+ * Informações do sistema
+ */
+function getSistema(){
+
+  return {
+    nome : "Gestão de Sala Escolar",
+    versao : "1.0",
+    empresa : "Sistema Escolar",
+    ano : new Date().getFullYear()
+  };
+
+}
+
+/**
+ * Data atual
+ */
+function dataAtual(){
+
+  return Utilities.formatDate(
+    new Date(),
+    Session.getScriptTimeZone(),
+    "dd/MM/yyyy HH:mm:ss"
+  );
+
+}
+
+/**
+ * Testa conexão do sistema
+ */
+function testarSistema(){
+
+  return {
+    status:true,
+    mensagem:"Sistema funcionando corretamente."
+  };
+
+}
+
+/**
+ * Limpa cache
+ */
+function limparCache(){
+
+  CacheService.getScriptCache().removeAll([]);
+
+  return true;
+
+}
+
+/**
+ * Usuário conectado
+ */
+function usuarioLogado(){
+
+  return Session.getActiveUser().getEmail();
+
+}
+
+/**
+ * Fuso horário
+ */
+function getTimeZone(){
+
+  return Session.getScriptTimeZone();
+
+}
+
+/**
+ * Nome da planilha ativa
+ */
+function getNomePlanilha(){
+
+  return SpreadsheetApp
+    .openById(ID_PLANILHA)
+    .getName();
+
+}
+
+/**
+ * Informações gerais
+ */
+function informacoesSistema(){
+
+  const ss = SpreadsheetApp.openById(ID_PLANILHA);
+
+  return {
+
+    nome:ss.getName(),
+
+    url:ss.getUrl(),
+
+    abas:ss.getSheets().length,
+
+    ultimaAtualizacao:new Date()
+
+  };
+
+}
