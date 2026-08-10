@@ -1,0 +1,288 @@
+/************************************************************
+ * ARQUIVO: Notas.gs
+ * Projeto: Gestão de Sala Escolar
+ * Controle de Notas e Boletim
+ ************************************************************/
+
+/**
+ * Lista todas as notas
+ */
+function listarNotas() {
+  return listarRegistros(ABAS.NOTAS);
+}
+
+/**
+ * Busca nota pelo ID
+ */
+function buscarNota(id) {
+
+  return listarNotas().find(function(n) {
+    return String(n.ID) === String(id);
+  }) || null;
+
+}
+
+/**
+ * Verifica se já existe nota para o aluno/disciplina
+ */
+function existeNota(alunoId, disciplina) {
+
+  return listarNotas().some(function(n) {
+
+    return (
+      String(n.AlunoID) === String(alunoId) &&
+      String(n.Disciplina) === String(disciplina)
+    );
+
+  });
+
+}
+
+/**
+ * Calcula média
+ */
+function calcularMedia(n1, n2, n3, n4, recuperacao) {
+
+  n1 = Number(n1) || 0;
+  n2 = Number(n2) || 0;
+  n3 = Number(n3) || 0;
+  n4 = Number(n4) || 0;
+  recuperacao = Number(recuperacao) || 0;
+
+  let media = (n1 + n2 + n3 + n4) / 4;
+
+  if (recuperacao > media) {
+    media = (media + recuperacao) / 2;
+  }
+
+  return Number(media.toFixed(2));
+
+}
+
+/**
+ * Situação do aluno
+ */
+function calcularSituacao(media) {
+
+  if (media >= 7) {
+    return "APROVADO";
+  }
+
+  if (media >= 5) {
+    return "RECUPERAÇÃO";
+  }
+
+  return "REPROVADO";
+
+}
+
+/**
+ * Cadastra notas
+ */
+function cadastrarNota(dados) {
+
+  validarSessao();
+
+  if (existeNota(dados.alunoId, dados.disciplina)) {
+
+    return {
+      sucesso: false,
+      mensagem: "Já existe nota cadastrada."
+    };
+
+  }
+
+  const media = calcularMedia(
+    dados.nota1,
+    dados.nota2,
+    dados.nota3,
+    dados.nota4,
+    dados.recuperacao
+  );
+
+  const situacao = calcularSituacao(media);
+
+  const id = gerarID(ABAS.NOTAS);
+
+  inserirRegistro(ABAS.NOTAS, [
+
+    id,
+    dados.alunoId,
+    dados.aluno,
+    dados.turma,
+    dados.disciplina,
+    dados.nota1,
+    dados.nota2,
+    dados.nota3,
+    dados.nota4,
+    dados.recuperacao,
+    media,
+    situacao
+
+  ]);
+
+  return {
+    sucesso: true,
+    mensagem: "Notas cadastradas.",
+    id: id
+  };
+
+}
+
+/**
+ * Atualiza notas
+ */
+function atualizarNota(id, dados) {
+
+  validarSessao();
+
+  const media = calcularMedia(
+    dados.nota1,
+    dados.nota2,
+    dados.nota3,
+    dados.nota4,
+    dados.recuperacao
+  );
+
+  const situacao = calcularSituacao(media);
+
+  atualizarRegistro(ABAS.NOTAS, id, [
+
+    id,
+    dados.alunoId,
+    dados.aluno,
+    dados.turma,
+    dados.disciplina,
+    dados.nota1,
+    dados.nota2,
+    dados.nota3,
+    dados.nota4,
+    dados.recuperacao,
+    media,
+    situacao
+
+  ]);
+
+  return {
+    sucesso: true,
+    mensagem: "Notas atualizadas."
+  };
+
+}
+
+/**
+ * Exclui nota
+ */
+function excluirNota(id) {
+
+  validarSessao();
+
+  excluirRegistro(ABAS.NOTAS, id);
+
+  return {
+    sucesso: true,
+    mensagem: "Registro removido."
+  };
+
+}
+
+/**
+ * Lista boletim do aluno
+ */
+function boletimAluno(alunoId) {
+
+  return listarNotas().filter(function(n) {
+
+    return String(n.AlunoID) === String(alunoId);
+
+  });
+
+}
+
+/**
+ * Lista notas da turma
+ */
+function notasTurma(turma) {
+
+  return listarNotas().filter(function(n) {
+
+    return n.Turma === turma;
+
+  });
+
+}
+
+/**
+ * Lista notas por disciplina
+ */
+function notasDisciplina(disciplina) {
+
+  return listarNotas().filter(function(n) {
+
+    return n.Disciplina === disciplina;
+
+  });
+
+}
+
+/**
+ * Média geral da turma
+ */
+function mediaTurma(turma) {
+
+  const lista = notasTurma(turma);
+
+  if (lista.length === 0) {
+    return 0;
+  }
+
+  const soma = lista.reduce(function(total, item) {
+
+    return total + Number(item.Media);
+
+  }, 0);
+
+  return Number((soma / lista.length).toFixed(2));
+
+}
+
+/**
+ * Ranking dos alunos
+ */
+function rankingTurma(turma) {
+
+  return notasTurma(turma)
+    .sort(function(a, b) {
+
+      return Number(b.Media) - Number(a.Media);
+
+    });
+
+}
+
+/**
+ * Estatísticas das notas
+ */
+function estatisticasNotas() {
+
+  const lista = listarNotas();
+
+  return {
+
+    total: lista.length,
+
+    aprovados: lista.filter(function(n) {
+      return n.Situacao === "APROVADO";
+    }).length,
+
+    recuperacao: lista.filter(function(n) {
+      return n.Situacao === "RECUPERAÇÃO";
+    }).length,
+
+    reprovados: lista.filter(function(n) {
+      return n.Situacao === "REPROVADO";
+    }).length
+
+  };
+
+}
