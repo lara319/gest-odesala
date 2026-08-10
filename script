@@ -1,0 +1,4213 @@
+<script>
+
+/* =========================================================
+   VARIÁVEIS GLOBAIS
+========================================================= */
+
+let paginaAtual = 'dashboard';
+let dadosDashboard = {};
+let listaAlunos = [];
+let listaProfessores = [];
+let listaTurmas = [];
+let listaDisciplinas = [];
+let listaFrequencia = [];
+let listaNotas = [];
+let listaAtividades = [];
+let listaOcorrencias = [];
+let listaUsuarios = [];
+
+let tipoModalAtual = null;
+let idEdicaoAtual = null;
+
+
+/* =========================================================
+   INICIALIZAÇÃO
+========================================================= */
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  verificarSessao();
+
+});
+
+
+/* =========================================================
+   VERIFICAR SESSÃO
+========================================================= */
+
+function verificarSessao() {
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(function (usuario) {
+
+      mostrarLoading(false);
+
+      if (usuario) {
+
+        iniciarSistema(usuario);
+
+      } else {
+
+        mostrarLogin();
+
+      }
+
+    })
+    .withFailureHandler(function (erro) {
+
+      mostrarLoading(false);
+
+      mostrarLogin();
+
+      console.error(erro);
+
+    })
+    .getUsuarioLogado();
+
+}
+
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+function realizarLogin(event) {
+
+  event.preventDefault();
+
+  const email =
+    document.getElementById('loginEmail').value.trim();
+
+  const senha =
+    document.getElementById('loginSenha').value;
+
+  const mensagem =
+    document.getElementById('loginMensagem');
+
+  if (!email || !senha) {
+
+    mensagem.textContent =
+      'Informe o e-mail e a senha.';
+
+    return;
+
+  }
+
+  mensagem.textContent = 'Entrando...';
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(function (resultado) {
+
+      mostrarLoading(false);
+
+      if (resultado && resultado.sucesso) {
+
+        mensagem.textContent = '';
+
+        iniciarSistema(resultado.usuario);
+
+      } else {
+
+        mensagem.textContent =
+          resultado?.mensagem ||
+          'E-mail ou senha inválidos.';
+
+      }
+
+    })
+    .withFailureHandler(function (erro) {
+
+      mostrarLoading(false);
+
+      mensagem.textContent =
+        'Erro ao realizar login.';
+
+      console.error(erro);
+
+    })
+    .login(email, senha);
+
+}
+
+
+/* =========================================================
+   INICIAR SISTEMA
+========================================================= */
+
+function iniciarSistema(usuario) {
+
+  document.getElementById('loginPage').style.display =
+    'none';
+
+  document.getElementById('app').style.display =
+    'flex';
+
+  atualizarUsuario(usuario);
+
+  atualizarData();
+
+  abrirPagina('dashboard');
+
+  carregarDashboard();
+
+}
+
+
+/* =========================================================
+   MOSTRAR LOGIN
+========================================================= */
+
+function mostrarLogin() {
+
+  document.getElementById('loginPage').style.display =
+    'flex';
+
+  document.getElementById('app').style.display =
+    'none';
+
+}
+
+
+/* =========================================================
+   USUÁRIO
+========================================================= */
+
+function atualizarUsuario(usuario) {
+
+  if (!usuario) return;
+
+  const nome =
+    usuario.nome ||
+    usuario.Nome ||
+    usuario.email ||
+    usuario.Email ||
+    'Usuário';
+
+  const perfil =
+    usuario.perfil ||
+    usuario.Perfil ||
+    'Usuário';
+
+  const elementoNome =
+    document.getElementById('usuarioNome');
+
+  const elementoPerfil =
+    document.getElementById('usuarioPerfil');
+
+  if (elementoNome) {
+
+    elementoNome.textContent = nome;
+
+  }
+
+  if (elementoPerfil) {
+
+    elementoPerfil.textContent = perfil;
+
+  }
+
+}
+
+
+/* =========================================================
+   SAIR
+========================================================= */
+
+function sairSistema() {
+
+  if (!confirm('Deseja realmente sair do sistema?')) {
+
+    return;
+
+  }
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(function () {
+
+      mostrarLoading(false);
+
+      mostrarLogin();
+
+    })
+    .withFailureHandler(function (erro) {
+
+      mostrarLoading(false);
+
+      console.error(erro);
+
+      mostrarToast(
+        'Erro ao sair do sistema.',
+        'error'
+      );
+
+    })
+    .logout();
+
+}
+
+
+/* =========================================================
+   NAVEGAÇÃO
+========================================================= */
+
+function abrirPagina(nome, botao) {
+
+  paginaAtual = nome;
+
+  document
+    .querySelectorAll('.page')
+    .forEach(function (pagina) {
+
+      pagina.classList.remove('active-page');
+
+    });
+
+
+  const pagina =
+    document.getElementById(
+      'pagina-' + nome
+    );
+
+  if (pagina) {
+
+    pagina.classList.add('active-page');
+
+  }
+
+
+  document
+    .querySelectorAll('.menu-item')
+    .forEach(function (item) {
+
+      item.classList.remove('active');
+
+    });
+
+
+  if (botao) {
+
+    botao.classList.add('active');
+
+  } else {
+
+    document
+      .querySelectorAll('.menu-item')
+      .forEach(function (item) {
+
+        const texto =
+          item.textContent
+            .trim()
+            .toLowerCase();
+
+        if (
+          texto === obterNomePagina(nome)
+        ) {
+
+          item.classList.add('active');
+
+        }
+
+      });
+
+  }
+
+
+  atualizarTituloPagina(nome);
+
+  carregarPagina(nome);
+
+  fecharSidebarMobile();
+
+}
+
+
+function obterNomePagina(nome) {
+
+  const nomes = {
+
+    dashboard: 'dashboard',
+
+    alunos: 'alunos',
+
+    professores: 'professores',
+
+    turmas: 'turmas',
+
+    disciplinas: 'disciplinas',
+
+    frequencia: 'frequência',
+
+    notas: 'notas',
+
+    atividades: 'atividades',
+
+    ocorrencias: 'ocorrências',
+
+    usuarios: 'usuários',
+
+    relatorios: 'relatórios'
+
+  };
+
+  return nomes[nome] || nome;
+
+}
+
+
+/* =========================================================
+   TÍTULO DA PÁGINA
+========================================================= */
+
+function atualizarTituloPagina(nome) {
+
+  const dados = {
+
+    dashboard: [
+      'Dashboard',
+      'Visão geral da sala escolar'
+    ],
+
+    alunos: [
+      'Alunos',
+      'Gerencie os alunos cadastrados.'
+    ],
+
+    professores: [
+      'Professores',
+      'Gerencie os professores.'
+    ],
+
+    turmas: [
+      'Turmas',
+      'Gerencie as turmas escolares.'
+    ],
+
+    disciplinas: [
+      'Disciplinas',
+      'Gerencie as disciplinas.'
+    ],
+
+    frequencia: [
+      'Frequência',
+      'Controle de presença dos alunos.'
+    ],
+
+    notas: [
+      'Notas',
+      'Gerencie as notas e boletins.'
+    ],
+
+    atividades: [
+      'Atividades',
+      'Gerencie atividades e trabalhos.'
+    ],
+
+    ocorrencias: [
+      'Ocorrências',
+      'Histórico de ocorrências dos alunos.'
+    ],
+
+    usuarios: [
+      'Usuários',
+      'Controle de acesso ao sistema.'
+    ],
+
+    relatorios: [
+      'Relatórios',
+      'Gere relatórios do sistema.'
+    ]
+
+  };
+
+  const info = dados[nome];
+
+  if (!info) return;
+
+  document.getElementById('pageTitle').textContent =
+    info[0];
+
+  document.getElementById('pageSubtitle').textContent =
+    info[1];
+
+}
+
+
+/* =========================================================
+   CARREGAR PÁGINA
+========================================================= */
+
+function carregarPagina(nome) {
+
+  switch (nome) {
+
+    case 'dashboard':
+      carregarDashboard();
+      break;
+
+    case 'alunos':
+      carregarAlunos();
+      break;
+
+    case 'professores':
+      carregarProfessores();
+      break;
+
+    case 'turmas':
+      carregarTurmas();
+      break;
+
+    case 'disciplinas':
+      carregarDisciplinas();
+      break;
+
+    case 'frequencia':
+      carregarFrequencia();
+      break;
+
+    case 'notas':
+      carregarNotas();
+      break;
+
+    case 'atividades':
+      carregarAtividades();
+      break;
+
+    case 'ocorrencias':
+      carregarOcorrencias();
+      break;
+
+    case 'usuarios':
+      carregarUsuarios();
+      break;
+
+  }
+
+}
+
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
+function carregarDashboard() {
+
+  google.script.run
+    .withSuccessHandler(function (dados) {
+
+      if (!dados) return;
+
+      dadosDashboard = dados;
+
+      preencherDashboard(dados);
+
+    })
+    .withFailureHandler(function (erro) {
+
+      console.error(erro);
+
+      mostrarToast(
+        'Erro ao carregar dashboard.',
+        'error'
+      );
+
+    })
+    .dashboardPrincipal();
+
+}
+
+
+function preencherDashboard(dados) {
+
+  const cards =
+    dados.cards || {};
+
+  preencherTexto(
+    'cardAlunos',
+    cards.alunos || 0
+  );
+
+  preencherTexto(
+    'cardProfessores',
+    cards.professores || 0
+  );
+
+  preencherTexto(
+    'cardTurmas',
+    cards.turmas || 0
+  );
+
+  preencherTexto(
+    'cardDisciplinas',
+    cards.disciplinas || 0
+  );
+
+  preencherTexto(
+    'cardNotas',
+    cards.notas || 0
+  );
+
+  preencherTexto(
+    'cardFrequencias',
+    cards.frequencias || 0
+  );
+
+  preencherTexto(
+    'cardAtividades',
+    cards.atividades || 0
+  );
+
+  preencherTexto(
+    'cardOcorrencias',
+    cards.ocorrencias || 0
+  );
+
+
+  const graficos =
+    dados.graficos || {};
+
+  criarGraficoSimples(
+    'graficoNotas',
+    graficos.notas
+  );
+
+  criarGraficoSimples(
+    'graficoFrequencia',
+    graficos.frequencia
+  );
+
+  criarGraficoSimples(
+    'graficoAtividades',
+    graficos.atividades
+  );
+
+  criarGraficoSimples(
+    'graficoOcorrencias',
+    graficos.ocorrencias
+  );
+
+}
+
+
+/* =========================================================
+   GRÁFICO SIMPLES
+========================================================= */
+
+function criarGraficoSimples(elementoId, dados) {
+
+  const elemento =
+    document.getElementById(elementoId);
+
+  if (!elemento) return;
+
+  if (
+    !dados ||
+    !dados.categorias ||
+    !dados.valores ||
+    dados.categorias.length === 0
+  ) {
+
+    elemento.innerHTML =
+      '<div class="empty-chart">Sem dados disponíveis.</div>';
+
+    return;
+
+  }
+
+
+  const maior =
+    Math.max(...dados.valores, 1);
+
+
+  let html = '<div style="display:flex;flex-direction:column;gap:13px;">';
+
+
+  dados.categorias.forEach(function (categoria, index) {
+
+    const valor =
+      Number(dados.valores[index]) || 0;
+
+    const porcentagem =
+      Math.max(
+        3,
+        Math.round((valor / maior) * 100)
+      );
+
+
+    html += `
+
+      <div>
+
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          margin-bottom:5px;
+          font-size:12px;
+        ">
+
+          <span>${escaparHTML(categoria)}</span>
+
+          <strong>${valor}</strong>
+
+        </div>
+
+        <div style="
+          height:8px;
+          background:#e2e8f0;
+          border-radius:20px;
+          overflow:hidden;
+        ">
+
+          <div style="
+            width:${porcentagem}%;
+            height:100%;
+            background:#2563eb;
+            border-radius:20px;
+            transition:width .5s;
+          "></div>
+
+        </div>
+
+      </div>
+
+    `;
+
+  });
+
+
+  html += '</div>';
+
+  elemento.innerHTML = html;
+
+}
+
+
+/* =========================================================
+   ALUNOS
+========================================================= */
+
+function carregarAlunos() {
+
+  const tabela =
+    document.getElementById('tabelaAlunos');
+
+  tabela.innerHTML =
+    '<tr><td colspan="7">Carregando...</td></tr>';
+
+
+  google.script.run
+    .withSuccessHandler(function (dados) {
+
+      listaAlunos = dados || [];
+
+      renderizarAlunos(listaAlunos);
+
+    })
+    .withFailureHandler(function (erro) {
+
+      tabela.innerHTML =
+        '<tr><td colspan="7">Erro ao carregar alunos.</td></tr>';
+
+      console.error(erro);
+
+    })
+    .listarAlunos();
+
+}
+
+
+function renderizarAlunos(lista) {
+
+  const tabela =
+    document.getElementById('tabelaAlunos');
+
+  if (!lista.length) {
+
+    tabela.innerHTML =
+      '<tr><td colspan="7" class="empty-state">Nenhum aluno encontrado.</td></tr>';
+
+    return;
+
+  }
+
+
+  tabela.innerHTML = lista.map(function (aluno) {
+
+    return `
+
+      <tr>
+
+        <td>${escaparHTML(aluno.ID)}</td>
+
+        <td>${escaparHTML(aluno.Nome)}</td>
+
+        <td>${escaparHTML(aluno.RA)}</td>
+
+        <td>${escaparHTML(aluno.Turma)}</td>
+
+        <td>${escaparHTML(aluno.Serie)}</td>
+
+        <td>
+          ${criarBadge(
+            aluno.Status || 'ATIVO'
+          )}
+        </td>
+
+        <td>
+
+          <div class="table-actions">
+
+            <button
+              class="action-button action-edit"
+              onclick="editarAluno('${aluno.ID}')"
+              title="Editar"
+            >
+              ✏️
+            </button>
+
+            <button
+              class="action-button action-delete"
+              onclick="excluirAluno('${aluno.ID}')"
+              title="Excluir"
+            >
+              🗑️
+            </button>
+
+          </div>
+
+        </td>
+
+      </tr>
+
+    `;
+
+  }).join('');
+
+}
+
+
+function pesquisarAlunos() {
+
+  const texto =
+    document
+      .getElementById('pesquisaAlunos')
+      .value
+      .toLowerCase()
+      .trim();
+
+  const filtrados =
+    listaAlunos.filter(function (aluno) {
+
+      return JSON.stringify(aluno)
+        .toLowerCase()
+        .includes(texto);
+
+    });
+
+  renderizarAlunos(filtrados);
+
+}
+
+
+/* =========================================================
+   MODAL ALUNO
+========================================================= */
+
+function abrirModalAluno(aluno = null) {
+
+  tipoModalAtual = 'aluno';
+
+  idEdicaoAtual =
+    aluno ? aluno.ID : null;
+
+  document.getElementById('modalTitulo').textContent =
+    aluno ? 'Editar aluno' : 'Novo aluno';
+
+
+  document.getElementById('modalConteudo').innerHTML = `
+
+    <form id="formAluno" class="modal-form">
+
+      <div class="form-group">
+
+        <label>Nome</label>
+
+        <input
+          type="text"
+          id="alunoNome"
+          value="${escaparAtributo(aluno?.Nome || '')}"
+          required
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>RA</label>
+
+        <input
+          type="text"
+          id="alunoRA"
+          value="${escaparAtributo(aluno?.RA || '')}"
+          required
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Turma</label>
+
+        <input
+          type="text"
+          id="alunoTurma"
+          value="${escaparAtributo(aluno?.Turma || '')}"
+          required
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Série</label>
+
+        <input
+          type="text"
+          id="alunoSerie"
+          value="${escaparAtributo(aluno?.Serie || '')}"
+          required
+        >
+
+      </div>
+
+    </form>
+
+  `;
+
+  abrirModal();
+
+}
+
+
+function salvarAluno() {
+
+  const dados = {
+
+    nome:
+      document.getElementById('alunoNome').value.trim(),
+
+    ra:
+      document.getElementById('alunoRA').value.trim(),
+
+    turma:
+      document.getElementById('alunoTurma').value.trim(),
+
+    serie:
+      document.getElementById('alunoSerie').value.trim()
+
+  };
+
+
+  if (!dados.nome || !dados.ra) {
+
+    mostrarToast(
+      'Preencha os campos obrigatórios.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  mostrarLoading(true);
+
+
+  if (idEdicaoAtual) {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .atualizarAluno(
+        idEdicaoAtual,
+        dados
+      );
+
+  } else {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .cadastrarAluno(dados);
+
+  }
+
+}
+
+
+function editarAluno(id) {
+
+  const aluno =
+    listaAlunos.find(function (item) {
+
+      return String(item.ID) === String(id);
+
+    });
+
+  if (aluno) {
+
+    abrirModalAluno(aluno);
+
+  }
+
+}
+
+
+function excluirAluno(id) {
+
+  if (
+    !confirm(
+      'Deseja excluir este aluno?'
+    )
+  ) return;
+
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(finalizarOperacao)
+    .withFailureHandler(tratarErro)
+    .excluirAluno(id);
+
+}
+
+
+/* =========================================================
+   PROFESSORES
+========================================================= */
+
+function carregarProfessores() {
+
+  const tabela =
+    document.getElementById(
+      'tabelaProfessores'
+    );
+
+  tabela.innerHTML =
+    '<tr><td colspan="7">Carregando...</td></tr>';
+
+
+  google.script.run
+    .withSuccessHandler(function (dados) {
+
+      listaProfessores = dados || [];
+
+      renderizarProfessores(
+        listaProfessores
+      );
+
+    })
+    .withFailureHandler(function (erro) {
+
+      tabela.innerHTML =
+        '<tr><td colspan="7">Erro ao carregar professores.</td></tr>';
+
+      console.error(erro);
+
+    })
+    .listarProfessores();
+
+}
+
+
+function renderizarProfessores(lista) {
+
+  const tabela =
+    document.getElementById(
+      'tabelaProfessores'
+    );
+
+  if (!lista.length) {
+
+    tabela.innerHTML =
+      '<tr><td colspan="7" class="empty-state">Nenhum professor encontrado.</td></tr>';
+
+    return;
+
+  }
+
+
+  tabela.innerHTML = lista.map(function (item) {
+
+    return `
+
+      <tr>
+
+        <td>${escaparHTML(item.ID)}</td>
+
+        <td>${escaparHTML(item.Nome)}</td>
+
+        <td>${escaparHTML(item.Materia)}</td>
+
+        <td>${escaparHTML(item.Email || '')}</td>
+
+        <td>${escaparHTML(item.Telefone || '')}</td>
+
+        <td>${criarBadge(item.Status || 'ATIVO')}</td>
+
+        <td>
+
+          <div class="table-actions">
+
+            <button
+              class="action-button action-edit"
+              onclick="editarProfessor('${item.ID}')"
+            >
+              ✏️
+            </button>
+
+            <button
+              class="action-button action-delete"
+              onclick="excluirProfessor('${item.ID}')"
+            >
+              🗑️
+            </button>
+
+          </div>
+
+        </td>
+
+      </tr>
+
+    `;
+
+  }).join('');
+
+}
+
+
+function pesquisarProfessores() {
+
+  const texto =
+    document
+      .getElementById('pesquisaProfessores')
+      .value
+      .toLowerCase()
+      .trim();
+
+  const filtrados =
+    listaProfessores.filter(function (item) {
+
+      return JSON.stringify(item)
+        .toLowerCase()
+        .includes(texto);
+
+    });
+
+  renderizarProfessores(filtrados);
+
+}
+
+
+function abrirModalProfessor(professor = null) {
+
+  tipoModalAtual = 'professor';
+
+  idEdicaoAtual =
+    professor ? professor.ID : null;
+
+
+  document.getElementById('modalTitulo').textContent =
+    professor
+      ? 'Editar professor'
+      : 'Novo professor';
+
+
+  document.getElementById('modalConteudo').innerHTML = `
+
+    <form id="formProfessor" class="modal-form">
+
+      <div class="form-group">
+
+        <label>Nome</label>
+
+        <input
+          type="text"
+          id="professorNome"
+          value="${escaparAtributo(professor?.Nome || '')}"
+          required
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Disciplina</label>
+
+        <input
+          type="text"
+          id="professorMateria"
+          value="${escaparAtributo(professor?.Materia || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>E-mail</label>
+
+        <input
+          type="email"
+          id="professorEmail"
+          value="${escaparAtributo(professor?.Email || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Telefone</label>
+
+        <input
+          type="text"
+          id="professorTelefone"
+          value="${escaparAtributo(professor?.Telefone || '')}"
+        >
+
+      </div>
+
+    </form>
+
+  `;
+
+  abrirModal();
+
+}
+
+
+function salvarProfessor() {
+
+  const dados = {
+
+    nome:
+      document.getElementById(
+        'professorNome'
+      ).value.trim(),
+
+    materia:
+      document.getElementById(
+        'professorMateria'
+      ).value.trim(),
+
+    email:
+      document.getElementById(
+        'professorEmail'
+      ).value.trim(),
+
+    telefone:
+      document.getElementById(
+        'professorTelefone'
+      ).value.trim()
+
+  };
+
+
+  mostrarLoading(true);
+
+
+  if (idEdicaoAtual) {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .atualizarProfessor(
+        idEdicaoAtual,
+        dados
+      );
+
+  } else {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .cadastrarProfessor(dados);
+
+  }
+
+}
+
+
+function editarProfessor(id) {
+
+  const professor =
+    listaProfessores.find(function (item) {
+
+      return String(item.ID) === String(id);
+
+    });
+
+  if (professor) {
+
+    abrirModalProfessor(professor);
+
+  }
+
+}
+
+
+function excluirProfessor(id) {
+
+  if (
+    !confirm(
+      'Deseja excluir este professor?'
+    )
+  ) return;
+
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(finalizarOperacao)
+    .withFailureHandler(tratarErro)
+    .excluirProfessor(id);
+
+}
+
+
+/* =========================================================
+   TURMAS
+========================================================= */
+
+function carregarTurmas() {
+
+  const tabela =
+    document.getElementById('tabelaTurmas');
+
+  tabela.innerHTML =
+    '<tr><td colspan="8">Carregando...</td></tr>';
+
+
+  google.script.run
+    .withSuccessHandler(function (dados) {
+
+      listaTurmas = dados || [];
+
+      renderizarTurmas(listaTurmas);
+
+    })
+    .withFailureHandler(tratarErro)
+    .listarTurmas();
+
+}
+
+
+function renderizarTurmas(lista) {
+
+  const tabela =
+    document.getElementById(
+      'tabelaTurmas'
+    );
+
+  if (!lista.length) {
+
+    tabela.innerHTML =
+      '<tr><td colspan="8" class="empty-state">Nenhuma turma encontrada.</td></tr>';
+
+    return;
+
+  }
+
+
+  tabela.innerHTML = lista.map(function (item) {
+
+    return `
+
+      <tr>
+
+        <td>${escaparHTML(item.ID)}</td>
+
+        <td>${escaparHTML(item.Nome || item.Turma)}</td>
+
+        <td>${escaparHTML(item.Serie || '')}</td>
+
+        <td>${escaparHTML(item.Ano || '')}</td>
+
+        <td>${escaparHTML(item.Professor || '')}</td>
+
+        <td>${escaparHTML(item.Turno || '')}</td>
+
+        <td>${escaparHTML(item.Sala || '')}</td>
+
+        <td>
+
+          <div class="table-actions">
+
+            <button
+              class="action-button action-edit"
+              onclick="editarTurma('${item.ID}')"
+            >
+              ✏️
+            </button>
+
+            <button
+              class="action-button action-delete"
+              onclick="excluirTurma('${item.ID}')"
+            >
+              🗑️
+            </button>
+
+          </div>
+
+        </td>
+
+      </tr>
+
+    `;
+
+  }).join('');
+
+}
+
+
+function abrirModalTurma(turma = null) {
+
+  tipoModalAtual = 'turma';
+
+  idEdicaoAtual =
+    turma ? turma.ID : null;
+
+
+  document.getElementById('modalTitulo').textContent =
+    turma ? 'Editar turma' : 'Nova turma';
+
+
+  document.getElementById('modalConteudo').innerHTML = `
+
+    <form class="modal-form">
+
+      <div class="form-group">
+
+        <label>Nome da turma</label>
+
+        <input
+          id="turmaNome"
+          value="${escaparAtributo(turma?.Nome || turma?.Turma || '')}"
+          required
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Série</label>
+
+        <input
+          id="turmaSerie"
+          value="${escaparAtributo(turma?.Serie || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Ano</label>
+
+        <input
+          id="turmaAno"
+          type="number"
+          value="${escaparAtributo(turma?.Ano || new Date().getFullYear())}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Professor</label>
+
+        <input
+          id="turmaProfessor"
+          value="${escaparAtributo(turma?.Professor || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Turno</label>
+
+        <select id="turmaTurno">
+
+          <option value="">Selecione</option>
+          <option value="MANHÃ">Manhã</option>
+          <option value="TARDE">Tarde</option>
+          <option value="NOITE">Noite</option>
+
+        </select>
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Sala</label>
+
+        <input
+          id="turmaSala"
+          value="${escaparAtributo(turma?.Sala || '')}"
+        >
+
+      </div>
+
+    </form>
+
+  `;
+
+
+  if (turma?.Turno) {
+
+    document.getElementById(
+      'turmaTurno'
+    ).value = turma.Turno;
+
+  }
+
+
+  abrirModal();
+
+}
+
+
+function salvarTurma() {
+
+  const dados = {
+
+    nome:
+      document.getElementById(
+        'turmaNome'
+      ).value.trim(),
+
+    serie:
+      document.getElementById(
+        'turmaSerie'
+      ).value.trim(),
+
+    ano:
+      document.getElementById(
+        'turmaAno'
+      ).value,
+
+    professor:
+      document.getElementById(
+        'turmaProfessor'
+      ).value.trim(),
+
+    turno:
+      document.getElementById(
+        'turmaTurno'
+      ).value,
+
+    sala:
+      document.getElementById(
+        'turmaSala'
+      ).value.trim()
+
+  };
+
+
+  mostrarLoading(true);
+
+
+  if (idEdicaoAtual) {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .atualizarTurma(
+        idEdicaoAtual,
+        dados
+      );
+
+  } else {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .cadastrarTurma(dados);
+
+  }
+
+}
+
+
+function editarTurma(id) {
+
+  const turma =
+    listaTurmas.find(function (item) {
+
+      return String(item.ID) === String(id);
+
+    });
+
+  if (turma) {
+
+    abrirModalTurma(turma);
+
+  }
+
+}
+
+
+function excluirTurma(id) {
+
+  if (
+    !confirm(
+      'Deseja excluir esta turma?'
+    )
+  ) return;
+
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(finalizarOperacao)
+    .withFailureHandler(tratarErro)
+    .excluirTurma(id);
+
+}
+
+
+/* =========================================================
+   DISCIPLINAS
+========================================================= */
+
+function carregarDisciplinas() {
+
+  const tabela =
+    document.getElementById(
+      'tabelaDisciplinas'
+    );
+
+  tabela.innerHTML =
+    '<tr><td colspan="7">Carregando...</td></tr>';
+
+
+  google.script.run
+    .withSuccessHandler(function (dados) {
+
+      listaDisciplinas = dados || [];
+
+      renderizarDisciplinas(
+        listaDisciplinas
+      );
+
+    })
+    .withFailureHandler(tratarErro)
+    .listarDisciplinas();
+
+}
+
+
+function renderizarDisciplinas(lista) {
+
+  const tabela =
+    document.getElementById(
+      'tabelaDisciplinas'
+    );
+
+  if (!lista.length) {
+
+    tabela.innerHTML =
+      '<tr><td colspan="7" class="empty-state">Nenhuma disciplina encontrada.</td></tr>';
+
+    return;
+
+  }
+
+
+  tabela.innerHTML = lista.map(function (item) {
+
+    return `
+
+      <tr>
+
+        <td>${escaparHTML(item.ID)}</td>
+
+        <td>${escaparHTML(item.Nome)}</td>
+
+        <td>${escaparHTML(item.CargaHoraria || '')}</td>
+
+        <td>${escaparHTML(item.Professor || '')}</td>
+
+        <td>${escaparHTML(item.Turma || '')}</td>
+
+        <td>${criarBadge(item.Status || 'ATIVA')}</td>
+
+        <td>
+
+          <div class="table-actions">
+
+            <button
+              class="action-button action-edit"
+              onclick="editarDisciplina('${item.ID}')"
+            >
+              ✏️
+            </button>
+
+            <button
+              class="action-button action-delete"
+              onclick="excluirDisciplina('${item.ID}')"
+            >
+              🗑️
+            </button>
+
+          </div>
+
+        </td>
+
+      </tr>
+
+    `;
+
+  }).join('');
+
+}
+
+
+function abrirModalDisciplina(disciplina = null) {
+
+  tipoModalAtual = 'disciplina';
+
+  idEdicaoAtual =
+    disciplina ? disciplina.ID : null;
+
+
+  document.getElementById(
+    'modalTitulo'
+  ).textContent =
+    disciplina
+      ? 'Editar disciplina'
+      : 'Nova disciplina';
+
+
+  document.getElementById(
+    'modalConteudo'
+  ).innerHTML = `
+
+    <form class="modal-form">
+
+      <div class="form-group">
+
+        <label>Nome</label>
+
+        <input
+          id="disciplinaNome"
+          value="${escaparAtributo(disciplina?.Nome || '')}"
+          required
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Carga horária</label>
+
+        <input
+          id="disciplinaCarga"
+          type="number"
+          value="${escaparAtributo(disciplina?.CargaHoraria || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Professor</label>
+
+        <input
+          id="disciplinaProfessor"
+          value="${escaparAtributo(disciplina?.Professor || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Turma</label>
+
+        <input
+          id="disciplinaTurma"
+          value="${escaparAtributo(disciplina?.Turma || '')}"
+        >
+
+      </div>
+
+    </form>
+
+  `;
+
+
+  abrirModal();
+
+}
+
+
+function salvarDisciplina() {
+
+  const dados = {
+
+    nome:
+      document.getElementById(
+        'disciplinaNome'
+      ).value.trim(),
+
+    cargaHoraria:
+      document.getElementById(
+        'disciplinaCarga'
+      ).value,
+
+    professor:
+      document.getElementById(
+        'disciplinaProfessor'
+      ).value.trim(),
+
+    turma:
+      document.getElementById(
+        'disciplinaTurma'
+      ).value.trim()
+
+  };
+
+
+  mostrarLoading(true);
+
+
+  if (idEdicaoAtual) {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .atualizarDisciplina(
+        idEdicaoAtual,
+        dados
+      );
+
+  } else {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .cadastrarDisciplina(dados);
+
+  }
+
+}
+
+
+function editarDisciplina(id) {
+
+  const item =
+    listaDisciplinas.find(function (disciplina) {
+
+      return String(disciplina.ID) === String(id);
+
+    });
+
+  if (item) {
+
+    abrirModalDisciplina(item);
+
+  }
+
+}
+
+
+function excluirDisciplina(id) {
+
+  if (
+    !confirm(
+      'Deseja excluir esta disciplina?'
+    )
+  ) return;
+
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(finalizarOperacao)
+    .withFailureHandler(tratarErro)
+    .excluirDisciplina(id);
+
+}
+
+
+/* =========================================================
+   FREQUÊNCIA
+========================================================= */
+
+function carregarFrequencia() {
+
+  const tabela =
+    document.getElementById(
+      'tabelaFrequencia'
+    );
+
+  tabela.innerHTML =
+    '<tr><td colspan="7">Carregando...</td></tr>';
+
+
+  google.script.run
+    .withSuccessHandler(function (dados) {
+
+      listaFrequencia = dados || [];
+
+      renderizarFrequencia(
+        listaFrequencia
+      );
+
+    })
+    .withFailureHandler(tratarErro)
+    .listarFrequencias();
+
+}
+
+
+function renderizarFrequencia(lista) {
+
+  const tabela =
+    document.getElementById(
+      'tabelaFrequencia'
+    );
+
+  if (!lista.length) {
+
+    tabela.innerHTML =
+      '<tr><td colspan="7" class="empty-state">Nenhum registro encontrado.</td></tr>';
+
+    return;
+
+  }
+
+
+  tabela.innerHTML = lista.map(function (item) {
+
+    const situacao =
+      item.Situacao ||
+      item.Status ||
+      'PRESENTE';
+
+
+    return `
+
+      <tr>
+
+        <td>${escaparHTML(item.Aluno || '')}</td>
+
+        <td>${escaparHTML(item.Turma || '')}</td>
+
+        <td>${escaparHTML(item.Disciplina || '')}</td>
+
+        <td>${formatarData(item.Data)}</td>
+
+        <td>${criarBadge(situacao)}</td>
+
+        <td>${escaparHTML(item.Professor || '')}</td>
+
+        <td>
+
+          <button
+            class="action-button action-edit"
+            onclick="editarFrequencia('${item.ID}')"
+          >
+            ✏️
+          </button>
+
+        </td>
+
+      </tr>
+
+    `;
+
+  }).join('');
+
+}
+
+
+function filtrarFrequencia() {
+
+  const turma =
+    document.getElementById(
+      'filtroTurmaFrequencia'
+    ).value;
+
+  const data =
+    document.getElementById(
+      'filtroDataFrequencia'
+    ).value;
+
+
+  let filtrados =
+    listaFrequencia;
+
+
+  if (turma) {
+
+    filtrados =
+      filtrados.filter(function (item) {
+
+        return String(item.Turma) ===
+          String(turma);
+
+      });
+
+  }
+
+
+  if (data) {
+
+    filtrados =
+      filtrados.filter(function (item) {
+
+        return normalizarData(item.Data) ===
+          data;
+
+      });
+
+  }
+
+
+  renderizarFrequencia(filtrados);
+
+}
+
+
+function abrirModalFrequencia(frequencia = null) {
+
+  tipoModalAtual = 'frequencia';
+
+  idEdicaoAtual =
+    frequencia ? frequencia.ID : null;
+
+
+  document.getElementById(
+    'modalTitulo'
+  ).textContent =
+    frequencia
+      ? 'Editar frequência'
+      : 'Registrar frequência';
+
+
+  document.getElementById(
+    'modalConteudo'
+  ).innerHTML = `
+
+    <form class="modal-form">
+
+      <div class="form-group">
+
+        <label>Aluno</label>
+
+        <input
+          id="frequenciaAluno"
+          value="${escaparAtributo(frequencia?.Aluno || '')}"
+          required
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Turma</label>
+
+        <input
+          id="frequenciaTurma"
+          value="${escaparAtributo(frequencia?.Turma || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Disciplina</label>
+
+        <input
+          id="frequenciaDisciplina"
+          value="${escaparAtributo(frequencia?.Disciplina || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Data</label>
+
+        <input
+          type="date"
+          id="frequenciaData"
+          value="${normalizarData(frequencia?.Data || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Situação</label>
+
+        <select id="frequenciaSituacao">
+
+          <option value="PRESENTE">Presente</option>
+          <option value="FALTA">Falta</option>
+          <option value="ATRASO">Atraso</option>
+          <option value="JUSTIFICADA">Justificada</option>
+
+        </select>
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Professor</label>
+
+        <input
+          id="frequenciaProfessor"
+          value="${escaparAtributo(frequencia?.Professor || '')}"
+        >
+
+      </div>
+
+    </form>
+
+  `;
+
+
+  if (frequencia?.Situacao) {
+
+    document.getElementById(
+      'frequenciaSituacao'
+    ).value =
+      frequencia.Situacao;
+
+  }
+
+
+  abrirModal();
+
+}
+
+
+function salvarFrequencia() {
+
+  const dados = {
+
+    aluno:
+      document.getElementById(
+        'frequenciaAluno'
+      ).value.trim(),
+
+    turma:
+      document.getElementById(
+        'frequenciaTurma'
+      ).value.trim(),
+
+    disciplina:
+      document.getElementById(
+        'frequenciaDisciplina'
+      ).value.trim(),
+
+    data:
+      document.getElementById(
+        'frequenciaData'
+      ).value,
+
+    situacao:
+      document.getElementById(
+        'frequenciaSituacao'
+      ).value,
+
+    professor:
+      document.getElementById(
+        'frequenciaProfessor'
+      ).value.trim()
+
+  };
+
+
+  mostrarLoading(true);
+
+
+  if (idEdicaoAtual) {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .atualizarFrequencia(
+        idEdicaoAtual,
+        dados
+      );
+
+  } else {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .registrarFrequencia(dados);
+
+  }
+
+}
+
+
+function editarFrequencia(id) {
+
+  const item =
+    listaFrequencia.find(function (registro) {
+
+      return String(registro.ID) === String(id);
+
+    });
+
+  if (item) {
+
+    abrirModalFrequencia(item);
+
+  }
+
+}
+
+
+/* =========================================================
+   NOTAS
+========================================================= */
+
+function carregarNotas() {
+
+  const tabela =
+    document.getElementById(
+      'tabelaNotas'
+    );
+
+  tabela.innerHTML =
+    '<tr><td colspan="10">Carregando...</td></tr>';
+
+
+  google.script.run
+    .withSuccessHandler(function (dados) {
+
+      listaNotas = dados || [];
+
+      renderizarNotas(listaNotas);
+
+    })
+    .withFailureHandler(tratarErro)
+    .listarNotas();
+
+}
+
+
+function renderizarNotas(lista) {
+
+  const tabela =
+    document.getElementById(
+      'tabelaNotas'
+    );
+
+  if (!lista.length) {
+
+    tabela.innerHTML =
+      '<tr><td colspan="10" class="empty-state">Nenhuma nota encontrada.</td></tr>';
+
+    return;
+
+  }
+
+
+  tabela.innerHTML = lista.map(function (item) {
+
+    return `
+
+      <tr>
+
+        <td>${escaparHTML(item.Aluno || '')}</td>
+
+        <td>${escaparHTML(item.Turma || '')}</td>
+
+        <td>${escaparHTML(item.Disciplina || '')}</td>
+
+        <td>${escaparHTML(item.Nota1 || '')}</td>
+
+        <td>${escaparHTML(item.Nota2 || '')}</td>
+
+        <td>${escaparHTML(item.Nota3 || '')}</td>
+
+        <td>${escaparHTML(item.Nota4 || '')}</td>
+
+        <td>
+          <strong>
+            ${escaparHTML(item.Media || '')}
+          </strong>
+        </td>
+
+        <td>
+          ${criarBadge(
+            item.Situacao || 'PENDENTE'
+          )}
+        </td>
+
+        <td>
+
+          <button
+            class="action-button action-edit"
+            onclick="editarNota('${item.ID}')"
+          >
+            ✏️
+          </button>
+
+        </td>
+
+      </tr>
+
+    `;
+
+  }).join('');
+
+}
+
+
+function abrirModalNota(nota = null) {
+
+  tipoModalAtual = 'nota';
+
+  idEdicaoAtual =
+    nota ? nota.ID : null;
+
+
+  document.getElementById(
+    'modalTitulo'
+  ).textContent =
+    nota
+      ? 'Editar nota'
+      : 'Lançar nota';
+
+
+  document.getElementById(
+    'modalConteudo'
+  ).innerHTML = `
+
+    <form class="modal-form">
+
+      <div class="form-group">
+
+        <label>Aluno</label>
+
+        <input
+          id="notaAluno"
+          value="${escaparAtributo(nota?.Aluno || '')}"
+          required
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Turma</label>
+
+        <input
+          id="notaTurma"
+          value="${escaparAtributo(nota?.Turma || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Disciplina</label>
+
+        <input
+          id="notaDisciplina"
+          value="${escaparAtributo(nota?.Disciplina || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Nota 1</label>
+
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          max="10"
+          id="nota1"
+          value="${escaparAtributo(nota?.Nota1 || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Nota 2</label>
+
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          max="10"
+          id="nota2"
+          value="${escaparAtributo(nota?.Nota2 || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Nota 3</label>
+
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          max="10"
+          id="nota3"
+          value="${escaparAtributo(nota?.Nota3 || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Nota 4</label>
+
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          max="10"
+          id="nota4"
+          value="${escaparAtributo(nota?.Nota4 || '')}"
+        >
+
+      </div>
+
+    </form>
+
+  `;
+
+
+  abrirModal();
+
+}
+
+
+function salvarNota() {
+
+  const dados = {
+
+    aluno:
+      document.getElementById(
+        'notaAluno'
+      ).value.trim(),
+
+    turma:
+      document.getElementById(
+        'notaTurma'
+      ).value.trim(),
+
+    disciplina:
+      document.getElementById(
+        'notaDisciplina'
+      ).value.trim(),
+
+    nota1:
+      document.getElementById('nota1').value,
+
+    nota2:
+      document.getElementById('nota2').value,
+
+    nota3:
+      document.getElementById('nota3').value,
+
+    nota4:
+      document.getElementById('nota4').value
+
+  };
+
+
+  mostrarLoading(true);
+
+
+  if (idEdicaoAtual) {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .atualizarNota(
+        idEdicaoAtual,
+        dados
+      );
+
+  } else {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .cadastrarNota(dados);
+
+  }
+
+}
+
+
+function editarNota(id) {
+
+  const item =
+    listaNotas.find(function (nota) {
+
+      return String(nota.ID) === String(id);
+
+    });
+
+  if (item) {
+
+    abrirModalNota(item);
+
+  }
+
+}
+
+
+/* =========================================================
+   ATIVIDADES
+========================================================= */
+
+function carregarAtividades() {
+
+  const tabela =
+    document.getElementById(
+      'tabelaAtividades'
+    );
+
+  tabela.innerHTML =
+    '<tr><td colspan="8">Carregando...</td></tr>';
+
+
+  google.script.run
+    .withSuccessHandler(function (dados) {
+
+      listaAtividades = dados || [];
+
+      renderizarAtividades(
+        listaAtividades
+      );
+
+    })
+    .withFailureHandler(tratarErro)
+    .listarAtividades();
+
+}
+
+
+function renderizarAtividades(lista) {
+
+  const tabela =
+    document.getElementById(
+      'tabelaAtividades'
+    );
+
+  if (!lista.length) {
+
+    tabela.innerHTML =
+      '<tr><td colspan="8" class="empty-state">Nenhuma atividade encontrada.</td></tr>';
+
+    return;
+
+  }
+
+
+  tabela.innerHTML = lista.map(function (item) {
+
+    return `
+
+      <tr>
+
+        <td>${escaparHTML(item.Titulo)}</td>
+
+        <td>${escaparHTML(item.Disciplina)}</td>
+
+        <td>${escaparHTML(item.Turma)}</td>
+
+        <td>${escaparHTML(item.Professor)}</td>
+
+        <td>${formatarData(item.DataEntrega)}</td>
+
+        <td>${escaparHTML(item.Valor || '')}</td>
+
+        <td>${criarBadge(item.Status)}</td>
+
+        <td>
+
+          <div class="table-actions">
+
+            <button
+              class="action-button action-edit"
+              onclick="editarAtividade('${item.ID}')"
+            >
+              ✏️
+            </button>
+
+            <button
+              class="action-button action-delete"
+              onclick="excluirAtividade('${item.ID}')"
+            >
+              🗑️
+            </button>
+
+          </div>
+
+        </td>
+
+      </tr>
+
+    `;
+
+  }).join('');
+
+}
+
+
+function abrirModalAtividade(atividade = null) {
+
+  tipoModalAtual = 'atividade';
+
+  idEdicaoAtual =
+    atividade ? atividade.ID : null;
+
+
+  document.getElementById(
+    'modalTitulo'
+  ).textContent =
+    atividade
+      ? 'Editar atividade'
+      : 'Nova atividade';
+
+
+  document.getElementById(
+    'modalConteudo'
+  ).innerHTML = `
+
+    <form class="modal-form">
+
+      <div class="form-group full-width">
+
+        <label>Título</label>
+
+        <input
+          id="atividadeTitulo"
+          value="${escaparAtributo(atividade?.Titulo || '')}"
+          required
+        >
+
+      </div>
+
+      <div class="form-group full-width">
+
+        <label>Descrição</label>
+
+        <textarea
+          id="atividadeDescricao"
+        >${escaparHTML(atividade?.Descricao || '')}</textarea>
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Disciplina</label>
+
+        <input
+          id="atividadeDisciplina"
+          value="${escaparAtributo(atividade?.Disciplina || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Turma</label>
+
+        <input
+          id="atividadeTurma"
+          value="${escaparAtributo(atividade?.Turma || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Professor</label>
+
+        <input
+          id="atividadeProfessor"
+          value="${escaparAtributo(atividade?.Professor || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Data de entrega</label>
+
+        <input
+          type="date"
+          id="atividadeData"
+          value="${normalizarData(atividade?.DataEntrega || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Valor</label>
+
+        <input
+          type="number"
+          step="0.01"
+          id="atividadeValor"
+          value="${escaparAtributo(atividade?.Valor || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Status</label>
+
+        <select id="atividadeStatus">
+
+          <option value="PENDENTE">Pendente</option>
+          <option value="ENTREGUE">Entregue</option>
+
+        </select>
+
+      </div>
+
+      <div class="form-group full-width">
+
+        <label>Observações</label>
+
+        <textarea
+          id="atividadeObservacoes"
+        >${escaparHTML(atividade?.Observacoes || '')}</textarea>
+
+      </div>
+
+    </form>
+
+  `;
+
+
+  if (atividade?.Status) {
+
+    document.getElementById(
+      'atividadeStatus'
+    ).value =
+      atividade.Status;
+
+  }
+
+
+  abrirModal();
+
+}
+
+
+function salvarAtividade() {
+
+  const dados = {
+
+    titulo:
+      document.getElementById(
+        'atividadeTitulo'
+      ).value.trim(),
+
+    descricao:
+      document.getElementById(
+        'atividadeDescricao'
+      ).value.trim(),
+
+    disciplina:
+      document.getElementById(
+        'atividadeDisciplina'
+      ).value.trim(),
+
+    turma:
+      document.getElementById(
+        'atividadeTurma'
+      ).value.trim(),
+
+    professor:
+      document.getElementById(
+        'atividadeProfessor'
+      ).value.trim(),
+
+    dataEntrega:
+      document.getElementById(
+        'atividadeData'
+      ).value,
+
+    valor:
+      document.getElementById(
+        'atividadeValor'
+      ).value,
+
+    status:
+      document.getElementById(
+        'atividadeStatus'
+      ).value,
+
+    observacoes:
+      document.getElementById(
+        'atividadeObservacoes'
+      ).value.trim()
+
+  };
+
+
+  mostrarLoading(true);
+
+
+  if (idEdicaoAtual) {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .atualizarAtividade(
+        idEdicaoAtual,
+        dados
+      );
+
+  } else {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .cadastrarAtividade(dados);
+
+  }
+
+}
+
+
+function editarAtividade(id) {
+
+  const item =
+    listaAtividades.find(function (atividade) {
+
+      return String(atividade.ID) ===
+        String(id);
+
+    });
+
+  if (item) {
+
+    abrirModalAtividade(item);
+
+  }
+
+}
+
+
+function excluirAtividade(id) {
+
+  if (
+    !confirm(
+      'Deseja excluir esta atividade?'
+    )
+  ) return;
+
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(finalizarOperacao)
+    .withFailureHandler(tratarErro)
+    .excluirAtividade(id);
+
+}
+
+
+/* =========================================================
+   OCORRÊNCIAS
+========================================================= */
+
+function carregarOcorrencias() {
+
+  const tabela =
+    document.getElementById(
+      'tabelaOcorrencias'
+    );
+
+  tabela.innerHTML =
+    '<tr><td colspan="8">Carregando...</td></tr>';
+
+
+  google.script.run
+    .withSuccessHandler(function (dados) {
+
+      listaOcorrencias = dados || [];
+
+      renderizarOcorrencias(
+        listaOcorrencias
+      );
+
+    })
+    .withFailureHandler(tratarErro)
+    .listarOcorrencias();
+
+}
+
+
+function renderizarOcorrencias(lista) {
+
+  const tabela =
+    document.getElementById(
+      'tabelaOcorrencias'
+    );
+
+  if (!lista.length) {
+
+    tabela.innerHTML =
+      '<tr><td colspan="8" class="empty-state">Nenhuma ocorrência encontrada.</td></tr>';
+
+    return;
+
+  }
+
+
+  tabela.innerHTML = lista.map(function (item) {
+
+    return `
+
+      <tr>
+
+        <td>${escaparHTML(item.Aluno)}</td>
+
+        <td>${escaparHTML(item.Turma)}</td>
+
+        <td>${escaparHTML(item.Professor)}</td>
+
+        <td>${formatarData(item.Data)}</td>
+
+        <td>${escaparHTML(item.Tipo)}</td>
+
+        <td>${escaparHTML(item.Descricao)}</td>
+
+        <td>${criarBadge(item.Status)}</td>
+
+        <td>
+
+          <div class="table-actions">
+
+            <button
+              class="action-button action-edit"
+              onclick="editarOcorrencia('${item.ID}')"
+            >
+              ✏️
+            </button>
+
+            <button
+              class="action-button action-delete"
+              onclick="excluirOcorrencia('${item.ID}')"
+            >
+              🗑️
+            </button>
+
+          </div>
+
+        </td>
+
+      </tr>
+
+    `;
+
+  }).join('');
+
+}
+
+
+function abrirModalOcorrencia(ocorrencia = null) {
+
+  tipoModalAtual = 'ocorrencia';
+
+  idEdicaoAtual =
+    ocorrencia ? ocorrencia.ID : null;
+
+
+  document.getElementById(
+    'modalTitulo'
+  ).textContent =
+    ocorrencia
+      ? 'Editar ocorrência'
+      : 'Nova ocorrência';
+
+
+  document.getElementById(
+    'modalConteudo'
+  ).innerHTML = `
+
+    <form class="modal-form">
+
+      <div class="form-group">
+
+        <label>Aluno</label>
+
+        <input
+          id="ocorrenciaAluno"
+          value="${escaparAtributo(ocorrencia?.Aluno || '')}"
+          required
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Aluno ID</label>
+
+        <input
+          id="ocorrenciaAlunoId"
+          value="${escaparAtributo(ocorrencia?.AlunoID || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Turma</label>
+
+        <input
+          id="ocorrenciaTurma"
+          value="${escaparAtributo(ocorrencia?.Turma || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Professor</label>
+
+        <input
+          id="ocorrenciaProfessor"
+          value="${escaparAtributo(ocorrencia?.Professor || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Data</label>
+
+        <input
+          type="date"
+          id="ocorrenciaData"
+          value="${normalizarData(ocorrencia?.Data || '')}"
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Tipo</label>
+
+        <select id="ocorrenciaTipo">
+
+          <option value="ADVERTENCIA">Advertência</option>
+          <option value="DISCIPLINAR">Disciplinar</option>
+          <option value="ELOGIO">Elogio</option>
+          <option value="OUTRA">Outra</option>
+
+        </select>
+
+      </div>
+
+      <div class="form-group full-width">
+
+        <label>Descrição</label>
+
+        <textarea
+          id="ocorrenciaDescricao"
+          required
+        >${escaparHTML(ocorrencia?.Descricao || '')}</textarea>
+
+      </div>
+
+      <div class="form-group full-width">
+
+        <label>Providências</label>
+
+        <textarea
+          id="ocorrenciaProvidencias"
+        >${escaparHTML(ocorrencia?.Providencias || '')}</textarea>
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Status</label>
+
+        <select id="ocorrenciaStatus">
+
+          <option value="ABERTA">Aberta</option>
+          <option value="ENCERRADA">Encerrada</option>
+
+        </select>
+
+      </div>
+
+    </form>
+
+  `;
+
+
+  if (ocorrencia?.Tipo) {
+
+    document.getElementById(
+      'ocorrenciaTipo'
+    ).value =
+      ocorrencia.Tipo;
+
+  }
+
+
+  if (ocorrencia?.Status) {
+
+    document.getElementById(
+      'ocorrenciaStatus'
+    ).value =
+      ocorrencia.Status;
+
+  }
+
+
+  abrirModal();
+
+}
+
+
+function salvarOcorrencia() {
+
+  const dados = {
+
+    aluno:
+      document.getElementById(
+        'ocorrenciaAluno'
+      ).value.trim(),
+
+    alunoId:
+      document.getElementById(
+        'ocorrenciaAlunoId'
+      ).value.trim(),
+
+    turma:
+      document.getElementById(
+        'ocorrenciaTurma'
+      ).value.trim(),
+
+    professor:
+      document.getElementById(
+        'ocorrenciaProfessor'
+      ).value.trim(),
+
+    data:
+      document.getElementById(
+        'ocorrenciaData'
+      ).value,
+
+    tipo:
+      document.getElementById(
+        'ocorrenciaTipo'
+      ).value,
+
+    descricao:
+      document.getElementById(
+        'ocorrenciaDescricao'
+      ).value.trim(),
+
+    providencias:
+      document.getElementById(
+        'ocorrenciaProvidencias'
+      ).value.trim(),
+
+    status:
+      document.getElementById(
+        'ocorrenciaStatus'
+      ).value
+
+  };
+
+
+  mostrarLoading(true);
+
+
+  if (idEdicaoAtual) {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .atualizarOcorrencia(
+        idEdicaoAtual,
+        dados
+      );
+
+  } else {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .cadastrarOcorrencia(dados);
+
+  }
+
+}
+
+
+function editarOcorrencia(id) {
+
+  const item =
+    listaOcorrencias.find(function (ocorrencia) {
+
+      return String(ocorrencia.ID) ===
+        String(id);
+
+    });
+
+  if (item) {
+
+    abrirModalOcorrencia(item);
+
+  }
+
+}
+
+
+function excluirOcorrencia(id) {
+
+  if (
+    !confirm(
+      'Deseja excluir esta ocorrência?'
+    )
+  ) return;
+
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(finalizarOperacao)
+    .withFailureHandler(tratarErro)
+    .excluirOcorrencia(id);
+
+}
+
+
+/* =========================================================
+   USUÁRIOS
+========================================================= */
+
+function carregarUsuarios() {
+
+  const tabela =
+    document.getElementById(
+      'tabelaUsuarios'
+    );
+
+  tabela.innerHTML =
+    '<tr><td colspan="6">Carregando...</td></tr>';
+
+
+  google.script.run
+    .withSuccessHandler(function (dados) {
+
+      listaUsuarios = dados || [];
+
+      renderizarUsuarios(
+        listaUsuarios
+      );
+
+    })
+    .withFailureHandler(tratarErro)
+    .listarUsuarios();
+
+}
+
+
+function renderizarUsuarios(lista) {
+
+  const tabela =
+    document.getElementById(
+      'tabelaUsuarios'
+    );
+
+  if (!lista.length) {
+
+    tabela.innerHTML =
+      '<tr><td colspan="6" class="empty-state">Nenhum usuário encontrado.</td></tr>';
+
+    return;
+
+  }
+
+
+  tabela.innerHTML = lista.map(function (item) {
+
+    return `
+
+      <tr>
+
+        <td>${escaparHTML(item.ID)}</td>
+
+        <td>${escaparHTML(item.Nome)}</td>
+
+        <td>${escaparHTML(item.Email)}</td>
+
+        <td>${escaparHTML(item.Perfil)}</td>
+
+        <td>${criarBadge(item.Status)}</td>
+
+        <td>
+
+          <div class="table-actions">
+
+            <button
+              class="action-button action-edit"
+              onclick="editarUsuario('${item.ID}')"
+            >
+              ✏️
+            </button>
+
+            <button
+              class="action-button action-delete"
+              onclick="excluirUsuario('${item.ID}')"
+            >
+              🗑️
+            </button>
+
+          </div>
+
+        </td>
+
+      </tr>
+
+    `;
+
+  }).join('');
+
+}
+
+
+function abrirModalUsuario(usuario = null) {
+
+  tipoModalAtual = 'usuario';
+
+  idEdicaoAtual =
+    usuario ? usuario.ID : null;
+
+
+  document.getElementById(
+    'modalTitulo'
+  ).textContent =
+    usuario
+      ? 'Editar usuário'
+      : 'Novo usuário';
+
+
+  document.getElementById(
+    'modalConteudo'
+  ).innerHTML = `
+
+    <form class="modal-form">
+
+      <div class="form-group">
+
+        <label>Nome</label>
+
+        <input
+          id="usuarioNomeForm"
+          value="${escaparAtributo(usuario?.Nome || '')}"
+          required
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>E-mail</label>
+
+        <input
+          type="email"
+          id="usuarioEmail"
+          value="${escaparAtributo(usuario?.Email || '')}"
+          required
+        >
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Perfil</label>
+
+        <select id="usuarioPerfilForm">
+
+          <option value="ADMIN">Administrador</option>
+          <option value="PROFESSOR">Professor</option>
+          <option value="COORDENADOR">Coordenador</option>
+          <option value="SECRETARIA">Secretaria</option>
+
+        </select>
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Status</label>
+
+        <select id="usuarioStatus">
+
+          <option value="ATIVO">Ativo</option>
+          <option value="INATIVO">Inativo</option>
+
+        </select>
+
+      </div>
+
+      <div class="form-group full-width">
+
+        <label>
+          Senha
+          ${usuario ? '(deixe vazio para manter)' : ''}
+        </label>
+
+        <input
+          type="password"
+          id="usuarioSenha"
+          autocomplete="new-password"
+        >
+
+      </div>
+
+    </form>
+
+  `;
+
+
+  if (usuario?.Perfil) {
+
+    document.getElementById(
+      'usuarioPerfilForm'
+    ).value =
+      usuario.Perfil;
+
+  }
+
+
+  if (usuario?.Status) {
+
+    document.getElementById(
+      'usuarioStatus'
+    ).value =
+      usuario.Status;
+
+  }
+
+
+  abrirModal();
+
+}
+
+
+function salvarUsuario() {
+
+  const dados = {
+
+    nome:
+      document.getElementById(
+        'usuarioNomeForm'
+      ).value.trim(),
+
+    email:
+      document.getElementById(
+        'usuarioEmail'
+      ).value.trim(),
+
+    perfil:
+      document.getElementById(
+        'usuarioPerfilForm'
+      ).value,
+
+    status:
+      document.getElementById(
+        'usuarioStatus'
+      ).value,
+
+    senha:
+      document.getElementById(
+        'usuarioSenha'
+      ).value
+
+  };
+
+
+  mostrarLoading(true);
+
+
+  if (idEdicaoAtual) {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .atualizarUsuario(
+        idEdicaoAtual,
+        dados
+      );
+
+  } else {
+
+    google.script.run
+      .withSuccessHandler(finalizarOperacao)
+      .withFailureHandler(tratarErro)
+      .cadastrarUsuario(dados);
+
+  }
+
+}
+
+
+function editarUsuario(id) {
+
+  const usuario =
+    listaUsuarios.find(function (item) {
+
+      return String(item.ID) === String(id);
+
+    });
+
+  if (usuario) {
+
+    abrirModalUsuario(usuario);
+
+  }
+
+}
+
+
+function excluirUsuario(id) {
+
+  if (
+    !confirm(
+      'Deseja excluir este usuário?'
+    )
+  ) return;
+
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(finalizarOperacao)
+    .withFailureHandler(tratarErro)
+    .excluirUsuario(id);
+
+}
+
+
+/* =========================================================
+   MODAL
+========================================================= */
+
+function abrirModal() {
+
+  document.getElementById(
+    'modal'
+  ).style.display = 'flex';
+
+}
+
+
+function fecharModal() {
+
+  document.getElementById(
+    'modal'
+  ).style.display = 'none';
+
+  tipoModalAtual = null;
+
+  idEdicaoAtual = null;
+
+}
+
+
+function salvarModal() {
+
+  switch (tipoModalAtual) {
+
+    case 'aluno':
+      salvarAluno();
+      break;
+
+    case 'professor':
+      salvarProfessor();
+      break;
+
+    case 'turma':
+      salvarTurma();
+      break;
+
+    case 'disciplina':
+      salvarDisciplina();
+      break;
+
+    case 'frequencia':
+      salvarFrequencia();
+      break;
+
+    case 'nota':
+      salvarNota();
+      break;
+
+    case 'atividade':
+      salvarAtividade();
+      break;
+
+    case 'ocorrencia':
+      salvarOcorrencia();
+      break;
+
+    case 'usuario':
+      salvarUsuario();
+      break;
+
+    default:
+
+      mostrarToast(
+        'Operação não identificada.',
+        'error'
+      );
+
+  }
+
+}
+
+
+/* =========================================================
+   RESULTADO DAS OPERAÇÕES
+========================================================= */
+
+function finalizarOperacao(resultado) {
+
+  mostrarLoading(false);
+
+  fecharModal();
+
+
+  if (
+    resultado &&
+    resultado.sucesso === false
+  ) {
+
+    mostrarToast(
+      resultado.mensagem ||
+      'Não foi possível realizar a operação.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  mostrarToast(
+    resultado?.mensagem ||
+    'Operação realizada com sucesso.',
+    'success'
+  );
+
+
+  carregarPagina(paginaAtual);
+
+  if (paginaAtual !== 'dashboard') {
+
+    carregarDashboard();
+
+  }
+
+}
+
+
+function tratarErro(erro) {
+
+  mostrarLoading(false);
+
+  console.error(erro);
+
+  mostrarToast(
+    'Ocorreu um erro ao processar a operação.',
+    'error'
+  );
+
+}
+
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+function mostrarLoading(exibir) {
+
+  const loading =
+    document.getElementById('loading');
+
+  if (!loading) return;
+
+  loading.style.display =
+    exibir ? 'flex' : 'none';
+
+}
+
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+let toastTimeout = null;
+
+
+function mostrarToast(mensagem, tipo = 'info') {
+
+  const toast =
+    document.getElementById('toast');
+
+  const texto =
+    document.getElementById('toastMensagem');
+
+  if (!toast || !texto) return;
+
+
+  texto.textContent = mensagem;
+
+
+  if (tipo === 'success') {
+
+    toast.style.background =
+      '#16a34a';
+
+  } else if (tipo === 'error') {
+
+    toast.style.background =
+      '#dc2626';
+
+  } else if (tipo === 'warning') {
+
+    toast.style.background =
+      '#d97706';
+
+  } else {
+
+    toast.style.background =
+      '#111827';
+
+  }
+
+
+  toast.classList.add('show');
+
+
+  clearTimeout(toastTimeout);
+
+
+  toastTimeout =
+    setTimeout(function () {
+
+      toast.classList.remove('show');
+
+    }, 3500);
+
+}
+
+
+/* =========================================================
+   SIDEBAR MOBILE
+========================================================= */
+
+function alternarSidebar() {
+
+  const sidebar =
+    document.getElementById('sidebar');
+
+  sidebar.classList.toggle('open');
+
+}
+
+
+function fecharSidebarMobile() {
+
+  const sidebar =
+    document.getElementById('sidebar');
+
+  if (
+    window.innerWidth <= 700
+  ) {
+
+    sidebar.classList.remove('open');
+
+  }
+
+}
+
+
+/* =========================================================
+   DATA
+========================================================= */
+
+function atualizarData() {
+
+  const elemento =
+    document.getElementById('dataAtual');
+
+  if (!elemento) return;
+
+
+  const agora = new Date();
+
+  elemento.textContent =
+    agora.toLocaleDateString(
+      'pt-BR',
+      {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }
+    );
+
+}
+
+
+/* =========================================================
+   RELATÓRIOS
+========================================================= */
+
+function gerarRelatorioAlunos() {
+
+  mostrarToast(
+    'Gerando relatório de alunos...',
+    'info'
+  );
+
+
+  google.script.run
+    .withSuccessHandler(function (resultado) {
+
+      mostrarResultadoRelatorio(
+        resultado,
+        'Relatório de alunos'
+      );
+
+    })
+    .withFailureHandler(tratarErro)
+    .gerarRelatorioAlunos();
+
+}
+
+
+function gerarRelatorioNotas() {
+
+  mostrarToast(
+    'Gerando relatório de notas...',
+    'info'
+  );
+
+
+  google.script.run
+    .withSuccessHandler(function (resultado) {
+
+      mostrarResultadoRelatorio(
+        resultado,
+        'Relatório de notas'
+      );
+
+    })
+    .withFailureHandler(tratarErro)
+    .gerarRelatorioNotas();
+
+}
+
+
+function gerarRelatorioFrequencia() {
+
+  mostrarToast(
+    'Gerando relatório de frequência...',
+    'info'
+  );
+
+
+  google.script.run
+    .withSuccessHandler(function (resultado) {
+
+      mostrarResultadoRelatorio(
+        resultado,
+        'Relatório de frequência'
+      );
+
+    })
+    .withFailureHandler(tratarErro)
+    .gerarRelatorioFrequencia();
+
+}
+
+
+function gerarRelatorioOcorrencias() {
+
+  mostrarToast(
+    'Gerando relatório de ocorrências...',
+    'info'
+  );
+
+
+  google.script.run
+    .withSuccessHandler(function (resultado) {
+
+      mostrarResultadoRelatorio(
+        resultado,
+        'Relatório de ocorrências'
+      );
+
+    })
+    .withFailureHandler(tratarErro)
+    .gerarRelatorioOcorrencias();
+
+}
+
+
+function mostrarResultadoRelatorio(
+  resultado,
+  nome
+) {
+
+  if (
+    resultado &&
+    resultado.url
+  ) {
+
+    mostrarToast(
+      nome + ' gerado com sucesso.',
+      'success'
+    );
+
+
+    window.open(
+      resultado.url,
+      '_blank'
+    );
+
+    return;
+
+  }
+
+
+  if (
+    resultado &&
+    resultado.sucesso === false
+  ) {
+
+    mostrarToast(
+      resultado.mensagem ||
+      'Não foi possível gerar o relatório.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  mostrarToast(
+    nome + ' processado.',
+    'success'
+  );
+
+}
+
+
+/* =========================================================
+   UTILITÁRIOS
+========================================================= */
+
+function preencherTexto(
+  id,
+  valor
+) {
+
+  const elemento =
+    document.getElementById(id);
+
+  if (elemento) {
+
+    elemento.textContent = valor;
+
+  }
+
+}
+
+
+function criarBadge(status) {
+
+  const valor =
+    String(status || '')
+      .toUpperCase();
+
+
+  let classe =
+    'badge-info';
+
+
+  if (
+    [
+      'ATIVO',
+      'ATIVA',
+      'ENTREGUE',
+      'PRESENTE',
+      'APROVADO',
+      'APROVADOS',
+      'ENCERRADA',
+      'ENCERRADO'
+    ].includes(valor)
+  ) {
+
+    classe = 'badge-success';
+
+  }
+
+
+  if (
+    [
+      'PENDENTE',
+      'ATRASADO',
+      'ATRASADA',
+      'RECUPERAÇÃO',
+      'RECUPERACAO',
+      'ATRASO',
+      'ABERTA'
+    ].includes(valor)
+  ) {
+
+    classe = 'badge-warning';
+
+  }
+
+
+  if (
+    [
+      'INATIVO',
+      'INATIVA',
+      'FALTA',
+      'REPROVADO',
+      'REPROVADOS',
+      'CANCELADO',
+      'CANCELADA'
+    ].includes(valor)
+  ) {
+
+    classe = 'badge-danger';
+
+  }
+
+
+  return `
+
+    <span class="badge ${classe}">
+
+      ${escaparHTML(status || '')}
+
+    </span>
+
+  `;
+
+}
+
+
+/* =========================================================
+   SEGURANÇA - ESCAPE HTML
+========================================================= */
+
+function escaparHTML(valor) {
+
+  if (
+    valor === null ||
+    valor === undefined
+  ) {
+
+    return '';
+
+  }
+
+
+  return String(valor)
+
+    .replace(/&/g, '&amp;')
+
+    .replace(/</g, '&lt;')
+
+    .replace(/>/g, '&gt;')
+
+    .replace(/"/g, '&quot;')
+
+    .replace(/'/g, '&#039;');
+
+}
+
+
+function escaparAtributo(valor) {
+
+  return escaparHTML(valor);
+
+}
+
+
+/* =========================================================
+   DATAS
+========================================================= */
+
+function formatarData(valor) {
+
+  if (!valor) return '';
+
+  const data = new Date(valor);
+
+  if (isNaN(data.getTime())) {
+
+    return escaparHTML(valor);
+
+  }
+
+  return data.toLocaleDateString(
+    'pt-BR'
+  );
+
+}
+
+
+function normalizarData(valor) {
+
+  if (!valor) return '';
+
+  if (
+    typeof valor === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(valor)
+  ) {
+
+    return valor;
+
+  }
+
+
+  const data =
+    new Date(valor);
+
+  if (isNaN(data.getTime())) {
+
+    return '';
+
+  }
+
+
+  const ano =
+    data.getFullYear();
+
+  const mes =
+    String(
+      data.getMonth() + 1
+    ).padStart(2, '0');
+
+  const dia =
+    String(
+      data.getDate()
+    ).padStart(2, '0');
+
+
+  return `${ano}-${mes}-${dia}`;
+
+}
+
+
+/* =========================================================
+   FECHAR MODAL CLICANDO FORA
+========================================================= */
+
+document.addEventListener(
+  'click',
+  function (event) {
+
+    const modal =
+      document.getElementById('modal');
+
+    if (
+      event.target === modal
+    ) {
+
+      fecharModal();
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   TECLA ESC
+========================================================= */
+
+document.addEventListener(
+  'keydown',
+  function (event) {
+
+    if (
+      event.key === 'Escape'
+    ) {
+
+      fecharModal();
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   RESIZE
+========================================================= */
+
+window.addEventListener(
+  'resize',
+  function () {
+
+    if (
+      window.innerWidth > 700
+    ) {
+
+      const sidebar =
+        document.getElementById(
+          'sidebar'
+        );
+
+      if (sidebar) {
+
+        sidebar.classList.remove(
+          'open'
+        );
+
+      }
+
+    }
+
+  }
+);
+
+</script>
