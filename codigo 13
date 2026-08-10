@@ -1,0 +1,299 @@
+/************************************************************
+ * ARQUIVO: Ocorrencias.gs
+ * Projeto: Gestão de Sala Escolar
+ * Controle de Ocorrências
+ ************************************************************/
+
+/**
+ * Lista todas as ocorrências
+ */
+function listarOcorrencias() {
+
+  return listarRegistros(ABAS.OCORRENCIAS);
+
+}
+
+/**
+ * Busca ocorrência por ID
+ */
+function buscarOcorrencia(id) {
+
+  return listarOcorrencias().find(function(item){
+
+    return String(item.ID) === String(id);
+
+  }) || null;
+
+}
+
+/**
+ * Cadastra ocorrência
+ */
+function cadastrarOcorrencia(dados){
+
+  validarSessao();
+
+  const id = gerarID(ABAS.OCORRENCIAS);
+
+  inserirRegistro(ABAS.OCORRENCIAS,[
+
+    id,
+
+    dados.alunoId,
+
+    dados.aluno,
+
+    dados.turma,
+
+    dados.professor,
+
+    dados.data,
+
+    dados.tipo,
+
+    dados.descricao,
+
+    dados.providencias || "",
+
+    "ABERTA"
+
+  ]);
+
+  return{
+
+    sucesso:true,
+
+    mensagem:"Ocorrência registrada.",
+
+    id:id
+
+  };
+
+}
+
+/**
+ * Atualiza ocorrência
+ */
+function atualizarOcorrencia(id,dados){
+
+  validarSessao();
+
+  atualizarRegistro(ABAS.OCORRENCIAS,id,[
+
+    id,
+
+    dados.alunoId,
+
+    dados.aluno,
+
+    dados.turma,
+
+    dados.professor,
+
+    dados.data,
+
+    dados.tipo,
+
+    dados.descricao,
+
+    dados.providencias,
+
+    dados.status
+
+  ]);
+
+  return{
+
+    sucesso:true,
+
+    mensagem:"Ocorrência atualizada."
+
+  };
+
+}
+
+/**
+ * Exclui ocorrência
+ */
+function excluirOcorrencia(id){
+
+  validarSessao();
+
+  excluirRegistro(ABAS.OCORRENCIAS,id);
+
+  return{
+
+    sucesso:true,
+
+    mensagem:"Ocorrência removida."
+
+  };
+
+}
+
+/**
+ * Pesquisa ocorrências
+ */
+function pesquisarOcorrencia(texto){
+
+  return pesquisar(ABAS.OCORRENCIAS,texto);
+
+}
+
+/**
+ * Lista ocorrências por aluno
+ */
+function ocorrenciasAluno(alunoId){
+
+  return listarOcorrencias().filter(function(item){
+
+    return String(item.AlunoID) === String(alunoId);
+
+  });
+
+}
+
+/**
+ * Lista ocorrências por turma
+ */
+function ocorrenciasTurma(turma){
+
+  return listarOcorrencias().filter(function(item){
+
+    return item.Turma === turma;
+
+  });
+
+}
+
+/**
+ * Lista ocorrências por professor
+ */
+function ocorrenciasProfessor(professor){
+
+  return listarOcorrencias().filter(function(item){
+
+    return item.Professor === professor;
+
+  });
+
+}
+
+/**
+ * Lista ocorrências por tipo
+ */
+function ocorrenciasTipo(tipo){
+
+  return listarOcorrencias().filter(function(item){
+
+    return item.Tipo === tipo;
+
+  });
+
+}
+
+/**
+ * Lista ocorrências abertas
+ */
+function ocorrenciasAbertas(){
+
+  return listarOcorrencias().filter(function(item){
+
+    return item.Status === "ABERTA";
+
+  });
+
+}
+
+/**
+ * Lista ocorrências encerradas
+ */
+function ocorrenciasEncerradas(){
+
+  return listarOcorrencias().filter(function(item){
+
+    return item.Status === "ENCERRADA";
+
+  });
+
+}
+
+/**
+ * Encerra ocorrência
+ */
+function encerrarOcorrencia(id){
+
+  const ocorrencia = buscarOcorrencia(id);
+
+  if(!ocorrencia){
+
+    return{
+
+      sucesso:false,
+
+      mensagem:"Ocorrência não encontrada."
+
+    };
+
+  }
+
+  atualizarRegistro(ABAS.OCORRENCIAS,id,[
+
+    ocorrencia.ID,
+
+    ocorrencia.AlunoID,
+
+    ocorrencia.Aluno,
+
+    ocorrencia.Turma,
+
+    ocorrencia.Professor,
+
+    ocorrencia.Data,
+
+    ocorrencia.Tipo,
+
+    ocorrencia.Descricao,
+
+    ocorrencia.Providencias,
+
+    "ENCERRADA"
+
+  ]);
+
+  return{
+
+    sucesso:true,
+
+    mensagem:"Ocorrência encerrada."
+
+  };
+
+}
+
+/**
+ * Estatísticas
+ */
+function estatisticasOcorrencias(){
+
+  const lista = listarOcorrencias();
+
+  return{
+
+    total: lista.length,
+
+    abertas: lista.filter(function(item){
+
+      return item.Status === "ABERTA";
+
+    }).length,
+
+    encerradas: lista.filter(function(item){
+
+      return item.Status === "ENCERRADA";
+
+    }).length
+
+  };
+
+}
