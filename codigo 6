@@ -1,0 +1,336 @@
+/************************************************************
+ * ARQUIVO: Alunos.gs
+ * Projeto: Gestão de Sala Escolar
+ * CRUD de Alunos
+ ************************************************************/
+
+/**
+ * Lista todos os alunos
+ */
+function listarAlunos() {
+  return listarRegistros(ABAS.ALUNOS);
+}
+
+/**
+ * Busca um aluno pelo ID
+ */
+function buscarAluno(id) {
+
+  const alunos = listarAlunos();
+
+  for (let i = 0; i < alunos.length; i++) {
+
+    if (String(alunos[i].ID) === String(id)) {
+      return alunos[i];
+    }
+
+  }
+
+  return null;
+
+}
+
+/**
+ * Verifica se o RA já existe
+ */
+function existeRA(ra) {
+
+  const alunos = listarAlunos();
+
+  return alunos.some(function(aluno) {
+    return String(aluno.RA) === String(ra);
+  });
+
+}
+
+/**
+ * Cadastra um novo aluno
+ */
+function cadastrarAluno(dados) {
+
+  validarSessao();
+
+  if (!dados.nome || !dados.ra || !dados.turma) {
+
+    return {
+      sucesso: false,
+      mensagem: "Preencha todos os campos obrigatórios."
+    };
+
+  }
+
+  if (existeRA(dados.ra)) {
+
+    return {
+      sucesso: false,
+      mensagem: "Já existe um aluno com este RA."
+    };
+
+  }
+
+  const id = gerarID(ABAS.ALUNOS);
+
+  inserirRegistro(ABAS.ALUNOS, [
+
+    id,
+    dados.nome,
+    dados.ra,
+    dados.turma,
+    dados.serie,
+    dados.nascimento,
+    dados.responsavel,
+    dados.telefone,
+    STATUS.ATIVO
+
+  ]);
+
+  return {
+
+    sucesso: true,
+
+    mensagem: "Aluno cadastrado com sucesso.",
+
+    id: id
+
+  };
+
+}
+
+/**
+ * Atualiza um aluno
+ */
+function atualizarAluno(id, dados) {
+
+  validarSessao();
+
+  if (!buscarAluno(id)) {
+
+    return {
+
+      sucesso: false,
+
+      mensagem: "Aluno não encontrado."
+
+    };
+
+  }
+
+  atualizarRegistro(ABAS.ALUNOS, id, [
+
+    id,
+    dados.nome,
+    dados.ra,
+    dados.turma,
+    dados.serie,
+    dados.nascimento,
+    dados.responsavel,
+    dados.telefone,
+    dados.status
+
+  ]);
+
+  return {
+
+    sucesso: true,
+
+    mensagem: "Aluno atualizado."
+
+  };
+
+}
+
+/**
+ * Exclui um aluno
+ */
+function excluirAluno(id) {
+
+  validarSessao();
+
+  if (!buscarAluno(id)) {
+
+    return {
+
+      sucesso: false,
+
+      mensagem: "Aluno não encontrado."
+
+    };
+
+  }
+
+  excluirRegistro(ABAS.ALUNOS, id);
+
+  return {
+
+    sucesso: true,
+
+    mensagem: "Aluno removido."
+
+  };
+
+}
+
+/**
+ * Pesquisa alunos
+ */
+function pesquisarAluno(texto) {
+
+  return pesquisar(ABAS.ALUNOS, texto);
+
+}
+
+/**
+ * Lista alunos por turma
+ */
+function listarPorTurma(turma) {
+
+  return listarAlunos().filter(function(aluno) {
+
+    return aluno.Turma === turma;
+
+  });
+
+}
+
+/**
+ * Lista alunos por série
+ */
+function listarPorSerie(serie) {
+
+  return listarAlunos().filter(function(aluno) {
+
+    return aluno["Série"] === serie;
+
+  });
+
+}
+
+/**
+ * Quantidade total
+ */
+function totalAlunos() {
+
+  return contar(ABAS.ALUNOS);
+
+}
+
+/**
+ * Quantidade por turma
+ */
+function totalPorTurma() {
+
+  const alunos = listarAlunos();
+
+  let resultado = {};
+
+  alunos.forEach(function(aluno) {
+
+    if (!resultado[aluno.Turma]) {
+
+      resultado[aluno.Turma] = 0;
+
+    }
+
+    resultado[aluno.Turma]++;
+
+  });
+
+  return resultado;
+
+}
+
+/**
+ * Quantidade por série
+ */
+function totalPorSerie() {
+
+  const alunos = listarAlunos();
+
+  let resultado = {};
+
+  alunos.forEach(function(aluno) {
+
+    const serie = aluno["Série"];
+
+    if (!resultado[serie]) {
+
+      resultado[serie] = 0;
+
+    }
+
+    resultado[serie]++;
+
+  });
+
+  return resultado;
+
+}
+
+/**
+ * Alunos ativos
+ */
+function alunosAtivos() {
+
+  return listarAlunos().filter(function(aluno) {
+
+    return aluno.Status === STATUS.ATIVO;
+
+  });
+
+}
+
+/**
+ * Alunos inativos
+ */
+function alunosInativos() {
+
+  return listarAlunos().filter(function(aluno) {
+
+    return aluno.Status === STATUS.INATIVO;
+
+  });
+
+}
+
+/**
+ * Altera status do aluno
+ */
+function alterarStatusAluno(id, status) {
+
+  const aluno = buscarAluno(id);
+
+  if (!aluno) {
+
+    return {
+
+      sucesso: false,
+
+      mensagem: "Aluno não encontrado."
+
+    };
+
+  }
+
+  atualizarRegistro(ABAS.ALUNOS, id, [
+
+    aluno.ID,
+    aluno.Nome,
+    aluno.RA,
+    aluno.Turma,
+    aluno["Série"],
+    aluno.Nascimento,
+    aluno.Responsável,
+    aluno.Telefone,
+    status
+
+  ]);
+
+  return {
+
+    sucesso: true,
+
+    mensagem: "Status atualizado."
+
+  };
+
+}
