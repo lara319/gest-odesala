@@ -1,0 +1,326 @@
+/************************************************************
+ * ARQUIVO: Turmas.gs
+ * Projeto: Gestão de Sala Escolar
+ * CRUD de Turmas
+ ************************************************************/
+
+/**
+ * Lista todas as turmas
+ */
+function listarTurmas() {
+  return listarRegistros(ABAS.TURMAS);
+}
+
+/**
+ * Busca uma turma pelo ID
+ */
+function buscarTurma(id) {
+
+  const turmas = listarTurmas();
+
+  for (let i = 0; i < turmas.length; i++) {
+
+    if (String(turmas[i].ID) === String(id)) {
+      return turmas[i];
+    }
+
+  }
+
+  return null;
+
+}
+
+/**
+ * Verifica se já existe uma turma
+ */
+function existeTurma(nome, ano) {
+
+  const turmas = listarTurmas();
+
+  return turmas.some(function(turma) {
+
+    return (
+      turma.Turma == nome &&
+      turma.Ano == ano
+    );
+
+  });
+
+}
+
+/**
+ * Cadastra uma nova turma
+ */
+function cadastrarTurma(dados) {
+
+  validarSessao();
+
+  if (!dados.turma || !dados.serie || !dados.ano) {
+
+    return {
+      sucesso: false,
+      mensagem: "Preencha os campos obrigatórios."
+    };
+
+  }
+
+  if (existeTurma(dados.turma, dados.ano)) {
+
+    return {
+      sucesso: false,
+      mensagem: "Esta turma já está cadastrada."
+    };
+
+  }
+
+  const id = gerarID(ABAS.TURMAS);
+
+  inserirRegistro(ABAS.TURMAS, [
+
+    id,
+    dados.turma,
+    dados.serie,
+    dados.ano,
+    dados.professor,
+    dados.turno,
+    dados.sala,
+    STATUS.ATIVO
+
+  ]);
+
+  return {
+
+    sucesso: true,
+    mensagem: "Turma cadastrada.",
+    id: id
+
+  };
+
+}
+
+/**
+ * Atualiza turma
+ */
+function atualizarTurma(id, dados) {
+
+  validarSessao();
+
+  if (!buscarTurma(id)) {
+
+    return {
+      sucesso: false,
+      mensagem: "Turma não encontrada."
+    };
+
+  }
+
+  atualizarRegistro(ABAS.TURMAS, id, [
+
+    id,
+    dados.turma,
+    dados.serie,
+    dados.ano,
+    dados.professor,
+    dados.turno,
+    dados.sala,
+    dados.status
+
+  ]);
+
+  return {
+
+    sucesso: true,
+    mensagem: "Turma atualizada."
+
+  };
+
+}
+
+/**
+ * Exclui turma
+ */
+function excluirTurma(id) {
+
+  validarSessao();
+
+  if (!buscarTurma(id)) {
+
+    return {
+      sucesso: false,
+      mensagem: "Turma não encontrada."
+    };
+
+  }
+
+  excluirRegistro(ABAS.TURMAS, id);
+
+  return {
+
+    sucesso: true,
+    mensagem: "Turma removida."
+
+  };
+
+}
+
+/**
+ * Pesquisa turmas
+ */
+function pesquisarTurma(texto) {
+
+  return pesquisar(ABAS.TURMAS, texto);
+
+}
+
+/**
+ * Lista turmas ativas
+ */
+function listarTurmasAtivas() {
+
+  return listarTurmas().filter(function(turma) {
+
+    return turma.Status === STATUS.ATIVO;
+
+  });
+
+}
+
+/**
+ * Lista turmas por série
+ */
+function listarTurmasSerie(serie) {
+
+  return listarTurmas().filter(function(turma) {
+
+    return turma["Série"] == serie;
+
+  });
+
+}
+
+/**
+ * Lista turmas por professor
+ */
+function listarTurmasProfessor(nomeProfessor) {
+
+  return listarTurmas().filter(function(turma) {
+
+    return turma.Professor == nomeProfessor;
+
+  });
+
+}
+
+/**
+ * Quantidade de alunos da turma
+ */
+function quantidadeAlunosTurma(nomeTurma) {
+
+  const alunos = listarAlunos();
+
+  return alunos.filter(function(aluno) {
+
+    return aluno.Turma == nomeTurma;
+
+  }).length;
+
+}
+
+/**
+ * Estatísticas das turmas
+ */
+function estatisticasTurmas() {
+
+  const turmas = listarTurmas();
+
+  let lista = [];
+
+  turmas.forEach(function(turma){
+
+    lista.push({
+
+      turma: turma.Turma,
+
+      serie: turma["Série"],
+
+      professor: turma.Professor,
+
+      alunos: quantidadeAlunosTurma(turma.Turma),
+
+      turno: turma.Turno,
+
+      sala: turma.Sala
+
+    });
+
+  });
+
+  return lista;
+
+}
+
+/**
+ * Total de turmas
+ */
+function totalTurmas() {
+
+  return contar(ABAS.TURMAS);
+
+}
+
+/**
+ * Altera o status da turma
+ */
+function alterarStatusTurma(id, status) {
+
+  const turma = buscarTurma(id);
+
+  if (!turma) {
+
+    return {
+      sucesso: false,
+      mensagem: "Turma não encontrada."
+    };
+
+  }
+
+  atualizarRegistro(ABAS.TURMAS, id, [
+
+    turma.ID,
+    turma.Turma,
+    turma["Série"],
+    turma.Ano,
+    turma.Professor,
+    turma.Turno,
+    turma.Sala,
+    status
+
+  ]);
+
+  return {
+
+    sucesso: true,
+    mensagem: "Status alterado."
+
+  };
+
+}
+
+/**
+ * Retorna turmas para preencher Combobox
+ */
+function listaTurmasSelect() {
+
+  return listarTurmas().map(function(turma){
+
+    return {
+
+      id: turma.ID,
+
+      nome: turma.Turma
+
+    };
+
+  });
+
+}
