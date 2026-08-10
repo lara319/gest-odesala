@@ -1,0 +1,165 @@
+/************************************************************
+ * ARQUIVO: InicializarBanco.gs
+ * Projeto: Gestão de Sala Escolar
+ * Cria automaticamente as abas do sistema
+ ************************************************************/
+
+/**
+ * Executa a inicialização completa do banco
+ */
+function inicializarBanco() {
+
+  const ss = SpreadsheetApp.openById(ID_PLANILHA);
+
+  criarAba(ss, ABAS.USUARIOS, CABECALHOS.USUARIOS);
+  criarAba(ss, ABAS.ALUNOS, CABECALHOS.ALUNOS);
+  criarAba(ss, ABAS.PROFESSORES, CABECALHOS.PROFESSORES);
+  criarAba(ss, ABAS.TURMAS, CABECALHOS.TURMAS);
+  criarAba(ss, ABAS.DISCIPLINAS, CABECALHOS.DISCIPLINAS);
+  criarAba(ss, ABAS.NOTAS, CABECALHOS.NOTAS);
+  criarAba(ss, ABAS.FREQUENCIA, CABECALHOS.FREQUENCIA);
+  criarAba(ss, ABAS.OCORRENCIAS, CABECALHOS.OCORRENCIAS);
+  criarAba(ss, ABAS.ATIVIDADES, CABECALHOS.ATIVIDADES);
+
+  SpreadsheetApp.flush();
+
+  return "Banco de dados criado com sucesso.";
+
+}
+
+/**
+ * Cria uma aba caso ela não exista
+ */
+function criarAba(planilha, nomeAba, cabecalho) {
+
+  let aba = planilha.getSheetByName(nomeAba);
+
+  if (!aba) {
+    aba = planilha.insertSheet(nomeAba);
+  }
+
+  if (aba.getLastRow() === 0) {
+
+    aba.getRange(1, 1, 1, cabecalho.length)
+      .setValues([cabecalho]);
+
+    formatarCabecalho(aba, cabecalho.length);
+
+  }
+
+}
+
+/**
+ * Formata o cabeçalho
+ */
+function formatarCabecalho(aba, totalColunas) {
+
+  const cab = aba.getRange(1, 1, 1, totalColunas);
+
+  cab.setFontWeight("bold");
+  cab.setHorizontalAlignment("center");
+  cab.setVerticalAlignment("middle");
+  cab.setBackground("#1976D2");
+  cab.setFontColor("#FFFFFF");
+
+  aba.setFrozenRows(1);
+  aba.autoResizeColumns(1, totalColunas);
+
+}
+
+/**
+ * Remove todas as abas do sistema
+ * (mantém apenas a primeira planilha)
+ */
+function resetarBanco() {
+
+  const ss = SpreadsheetApp.openById(ID_PLANILHA);
+
+  const abas = ss.getSheets();
+
+  abas.forEach(function(aba, indice) {
+
+    if (indice > 0) {
+      ss.deleteSheet(aba);
+    }
+
+  });
+
+  const primeira = ss.getSheets()[0];
+  primeira.clear();
+
+  return "Banco resetado.";
+
+}
+
+/**
+ * Recria todo o banco
+ */
+function recriarBanco() {
+
+  resetarBanco();
+
+  inicializarBanco();
+
+}
+
+/**
+ * Verifica se todas as abas existem
+ */
+function verificarBanco() {
+
+  let faltando = [];
+
+  Object.keys(ABAS).forEach(function(chave) {
+
+    const nome = ABAS[chave];
+
+    if (!getPlanilha().getSheetByName(nome)) {
+      faltando.push(nome);
+    }
+
+  });
+
+  return {
+    ok: faltando.length === 0,
+    faltando: faltando
+  };
+
+}
+
+/**
+ * Cria um usuário administrador padrão
+ */
+function criarAdministradorPadrao() {
+
+  const aba = getAba(ABAS.USUARIOS);
+
+  if (aba.getLastRow() > 1) {
+    return "Administrador já cadastrado.";
+  }
+
+  aba.appendRow([
+    1,
+    "Administrador",
+    "admin@escola.com",
+    "123456",
+    PERFIS.ADMIN,
+    STATUS.ATIVO
+  ]);
+
+  return "Administrador criado com sucesso.";
+
+}
+
+/**
+ * Instala o sistema
+ */
+function instalarSistema() {
+
+  inicializarBanco();
+
+  criarAdministradorPadrao();
+
+  return "Sistema instalado com sucesso.";
+
+}
