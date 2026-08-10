@@ -1,0 +1,247 @@
+/************************************************************
+ * ARQUIVO: Login.gs
+ * Projeto: Gestão de Sala Escolar
+ * Responsável pela autenticação e sessão
+ ************************************************************/
+
+const CHAVE_SESSAO = "USUARIO_LOGADO";
+
+/**
+ * Realiza o login
+ */
+function login(email, senha) {
+
+  email = String(email).trim().toLowerCase();
+  senha = String(senha).trim();
+
+  const usuarios = listarRegistros(ABAS.USUARIOS);
+
+  for (let i = 0; i < usuarios.length; i++) {
+
+    const usuario = usuarios[i];
+
+    if (
+      String(usuario.Email).toLowerCase() === email &&
+      String(usuario.Senha) === senha &&
+      String(usuario.Status).toUpperCase() === STATUS.ATIVO
+    ) {
+
+      salvarSessao(usuario);
+
+      return {
+        sucesso: true,
+        mensagem: "Login realizado com sucesso.",
+        usuario: usuario
+      };
+
+    }
+
+  }
+
+  return {
+    sucesso: false,
+    mensagem: "E-mail ou senha inválidos."
+  };
+
+}
+
+/**
+ * Salva a sessão do usuário
+ */
+function salvarSessao(usuario) {
+
+  const propriedades = PropertiesService.getUserProperties();
+
+  propriedades.setProperty(
+    CHAVE_SESSAO,
+    JSON.stringify(usuario)
+  );
+
+}
+
+/**
+ * Retorna usuário logado
+ */
+function getUsuarioLogado() {
+
+  const propriedades = PropertiesService.getUserProperties();
+
+  const usuario = propriedades.getProperty(CHAVE_SESSAO);
+
+  if (!usuario) {
+    return null;
+  }
+
+  return JSON.parse(usuario);
+
+}
+
+/**
+ * Verifica se existe sessão ativa
+ */
+function estaLogado() {
+
+  return getUsuarioLogado() !== null;
+
+}
+
+/**
+ * Encerra a sessão
+ */
+function logout() {
+
+  PropertiesService
+    .getUserProperties()
+    .deleteProperty(CHAVE_SESSAO);
+
+  return true;
+
+}
+
+/**
+ * Retorna o perfil do usuário
+ */
+function getPerfilUsuario() {
+
+  const usuario = getUsuarioLogado();
+
+  if (!usuario) {
+
+    return null;
+
+  }
+
+  return usuario.Perfil;
+
+}
+
+/**
+ * Verifica se é Administrador
+ */
+function isAdministrador() {
+
+  return getPerfilUsuario() === PERFIS.ADMIN;
+
+}
+
+/**
+ * Verifica se é Professor
+ */
+function isProfessor() {
+
+  return getPerfilUsuario() === PERFIS.PROFESSOR;
+
+}
+
+/**
+ * Verifica se é Coordenador
+ */
+function isCoordenador() {
+
+  return getPerfilUsuario() === PERFIS.COORDENADOR;
+
+}
+
+/**
+ * Verifica permissão
+ */
+function possuiPermissao(perfisPermitidos) {
+
+  const usuario = getUsuarioLogado();
+
+  if (!usuario) {
+
+    return false;
+
+  }
+
+  return perfisPermitidos.indexOf(usuario.Perfil) > -1;
+
+}
+
+/**
+ * Retorna dados do usuário autenticado
+ */
+function dadosUsuario() {
+
+  const usuario = getUsuarioLogado();
+
+  if (!usuario) {
+
+    return {
+      autenticado: false
+    };
+
+  }
+
+  return {
+
+    autenticado: true,
+
+    id: usuario.ID,
+
+    nome: usuario.Nome,
+
+    email: usuario.Email,
+
+    perfil: usuario.Perfil
+
+  };
+
+}
+
+/**
+ * Altera a senha do usuário
+ */
+function alterarSenha(id, senhaAtual, novaSenha) {
+
+  const linha = localizarLinhaPorID(
+    ABAS.USUARIOS,
+    id
+  );
+
+  if (linha == -1) {
+
+    return {
+      sucesso: false,
+      mensagem: "Usuário não encontrado."
+    };
+
+  }
+
+  const aba = getAba(ABAS.USUARIOS);
+
+  const dados = aba
+    .getRange(linha, 1, 1, aba.getLastColumn())
+    .getValues()[0];
+
+  if (String(dados[3]) !== String(senhaAtual)) {
+
+    return {
+      sucesso: false,
+      mensagem: "Senha atual incorreta."
+    };
+
+  }
+
+  aba.getRange(linha, 4).setValue(novaSenha);
+
+  return {
+    sucesso: true,
+    mensagem: "Senha alterada com sucesso."
+  };
+
+}
+
+/**
+ * Verifica autenticação antes de executar funções protegidas
+ */
+function validarSessao() {
+
+  if (!estaLogado()) {
+
+    throw new Error("Usuário não autenticado.");
+
+  }
+
+}
