@@ -1,0 +1,270 @@
+/************************************************************
+ * ARQUIVO: Disciplinas.gs
+ * Projeto: Gestão de Sala Escolar
+ * CRUD de Disciplinas
+ ************************************************************/
+
+/**
+ * Lista todas as disciplinas
+ */
+function listarDisciplinas() {
+  return listarRegistros(ABAS.DISCIPLINAS);
+}
+
+/**
+ * Busca disciplina pelo ID
+ */
+function buscarDisciplina(id) {
+
+  const disciplinas = listarDisciplinas();
+
+  for (let i = 0; i < disciplinas.length; i++) {
+
+    if (String(disciplinas[i].ID) === String(id)) {
+      return disciplinas[i];
+    }
+
+  }
+
+  return null;
+
+}
+
+/**
+ * Verifica se a disciplina já existe
+ */
+function existeDisciplina(nome, turma) {
+
+  return listarDisciplinas().some(function(d) {
+
+    return (
+      String(d.Nome).toUpperCase() == String(nome).toUpperCase() &&
+      String(d.Turma).toUpperCase() == String(turma).toUpperCase()
+    );
+
+  });
+
+}
+
+/**
+ * Cadastra disciplina
+ */
+function cadastrarDisciplina(dados) {
+
+  validarSessao();
+
+  if (!dados.nome || !dados.professor || !dados.turma) {
+
+    return {
+      sucesso:false,
+      mensagem:"Preencha os campos obrigatórios."
+    };
+
+  }
+
+  if (existeDisciplina(dados.nome, dados.turma)) {
+
+    return {
+      sucesso:false,
+      mensagem:"Disciplina já cadastrada para esta turma."
+    };
+
+  }
+
+  const id = gerarID(ABAS.DISCIPLINAS);
+
+  inserirRegistro(ABAS.DISCIPLINAS, [
+
+    id,
+    dados.nome,
+    dados.cargaHoraria,
+    dados.professor,
+    dados.turma,
+    STATUS.ATIVO
+
+  ]);
+
+  return {
+
+    sucesso:true,
+    mensagem:"Disciplina cadastrada.",
+    id:id
+
+  };
+
+}
+
+/**
+ * Atualiza disciplina
+ */
+function atualizarDisciplina(id, dados) {
+
+  validarSessao();
+
+  if (!buscarDisciplina(id)) {
+
+    return {
+      sucesso:false,
+      mensagem:"Disciplina não encontrada."
+    };
+
+  }
+
+  atualizarRegistro(ABAS.DISCIPLINAS, id, [
+
+    id,
+    dados.nome,
+    dados.cargaHoraria,
+    dados.professor,
+    dados.turma,
+    dados.status
+
+  ]);
+
+  return {
+
+    sucesso:true,
+    mensagem:"Disciplina atualizada."
+
+  };
+
+}
+
+/**
+ * Exclui disciplina
+ */
+function excluirDisciplina(id) {
+
+  validarSessao();
+
+  if (!buscarDisciplina(id)) {
+
+    return {
+      sucesso:false,
+      mensagem:"Disciplina não encontrada."
+    };
+
+  }
+
+  excluirRegistro(ABAS.DISCIPLINAS, id);
+
+  return {
+
+    sucesso:true,
+    mensagem:"Disciplina removida."
+
+  };
+
+}
+
+/**
+ * Pesquisa disciplina
+ */
+function pesquisarDisciplina(texto) {
+
+  return pesquisar(ABAS.DISCIPLINAS, texto);
+
+}
+
+/**
+ * Lista disciplinas de uma turma
+ */
+function listarDisciplinasTurma(turma) {
+
+  return listarDisciplinas().filter(function(d){
+
+    return d.Turma == turma;
+
+  });
+
+}
+
+/**
+ * Lista disciplinas de um professor
+ */
+function listarDisciplinasProfessor(nomeProfessor) {
+
+  return listarDisciplinas().filter(function(d){
+
+    return d.Professor == nomeProfessor;
+
+  });
+
+}
+
+/**
+ * Lista disciplinas ativas
+ */
+function disciplinasAtivas() {
+
+  return listarDisciplinas().filter(function(d){
+
+    return d.Status == STATUS.ATIVO;
+
+  });
+
+}
+
+/**
+ * Total de disciplinas
+ */
+function totalDisciplinas() {
+
+  return contar(ABAS.DISCIPLINAS);
+
+}
+
+/**
+ * Altera status
+ */
+function alterarStatusDisciplina(id, status) {
+
+  const disciplina = buscarDisciplina(id);
+
+  if (!disciplina) {
+
+    return {
+      sucesso:false,
+      mensagem:"Disciplina não encontrada."
+    };
+
+  }
+
+  atualizarRegistro(ABAS.DISCIPLINAS, id, [
+
+    disciplina.ID,
+    disciplina.Nome,
+    disciplina["Carga Horária"],
+    disciplina.Professor,
+    disciplina.Turma,
+    status
+
+  ]);
+
+  return {
+
+    sucesso:true,
+    mensagem:"Status atualizado."
+
+  };
+
+}
+
+/**
+ * Retorna disciplinas para ComboBox
+ */
+function listaDisciplinasSelect() {
+
+  return listarDisciplinas().map(function(d){
+
+    return {
+
+      id:d.ID,
+
+      nome:d.Nome
+
+    };
+
+  });
+
+}
