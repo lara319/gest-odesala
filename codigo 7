@@ -1,0 +1,310 @@
+/************************************************************
+ * ARQUIVO: Professores.gs
+ * Projeto: Gestão de Sala Escolar
+ * CRUD de Professores
+ ************************************************************/
+
+/**
+ * Lista todos os professores
+ */
+function listarProfessores() {
+  return listarRegistros(ABAS.PROFESSORES);
+}
+
+/**
+ * Busca professor pelo ID
+ */
+function buscarProfessor(id) {
+
+  const professores = listarProfessores();
+
+  for (let i = 0; i < professores.length; i++) {
+
+    if (String(professores[i].ID) === String(id)) {
+      return professores[i];
+    }
+
+  }
+
+  return null;
+
+}
+
+/**
+ * Verifica se o e-mail já existe
+ */
+function existeProfessorEmail(email) {
+
+  const professores = listarProfessores();
+
+  return professores.some(function(professor) {
+    return String(professor.Email).toLowerCase() === String(email).toLowerCase();
+  });
+
+}
+
+/**
+ * Cadastra professor
+ */
+function cadastrarProfessor(dados) {
+
+  validarSessao();
+
+  if (!dados.nome || !dados.email || !dados.disciplina) {
+
+    return {
+      sucesso: false,
+      mensagem: "Preencha os campos obrigatórios."
+    };
+
+  }
+
+  if (existeProfessorEmail(dados.email)) {
+
+    return {
+      sucesso: false,
+      mensagem: "Já existe um professor com este e-mail."
+    };
+
+  }
+
+  const id = gerarID(ABAS.PROFESSORES);
+
+  inserirRegistro(ABAS.PROFESSORES, [
+
+    id,
+    dados.nome,
+    dados.disciplina,
+    dados.telefone,
+    dados.email,
+    STATUS.ATIVO
+
+  ]);
+
+  return {
+
+    sucesso: true,
+    mensagem: "Professor cadastrado com sucesso.",
+    id: id
+
+  };
+
+}
+
+/**
+ * Atualiza professor
+ */
+function atualizarProfessor(id, dados) {
+
+  validarSessao();
+
+  if (!buscarProfessor(id)) {
+
+    return {
+      sucesso: false,
+      mensagem: "Professor não encontrado."
+    };
+
+  }
+
+  atualizarRegistro(ABAS.PROFESSORES, [
+
+    id,
+    dados.nome,
+    dados.disciplina,
+    dados.telefone,
+    dados.email,
+    dados.status
+
+  ]);
+
+  return {
+    sucesso: true,
+    mensagem: "Professor atualizado."
+  };
+
+}
+
+/**
+ * Exclui professor
+ */
+function excluirProfessor(id) {
+
+  validarSessao();
+
+  if (!buscarProfessor(id)) {
+
+    return {
+      sucesso: false,
+      mensagem: "Professor não encontrado."
+    };
+
+  }
+
+  excluirRegistro(ABAS.PROFESSORES, id);
+
+  return {
+    sucesso: true,
+    mensagem: "Professor removido."
+  };
+
+}
+
+/**
+ * Pesquisa professor
+ */
+function pesquisarProfessor(texto) {
+
+  return pesquisar(ABAS.PROFESSORES, texto);
+
+}
+
+/**
+ * Lista professores ativos
+ */
+function professoresAtivos() {
+
+  return listarProfessores().filter(function(professor) {
+
+    return professor.Status === STATUS.ATIVO;
+
+  });
+
+}
+
+/**
+ * Lista professores inativos
+ */
+function professoresInativos() {
+
+  return listarProfessores().filter(function(professor) {
+
+    return professor.Status === STATUS.INATIVO;
+
+  });
+
+}
+
+/**
+ * Lista professores por disciplina
+ */
+function listarPorDisciplina(disciplina) {
+
+  return listarProfessores().filter(function(professor) {
+
+    return professor.Disciplina === disciplina;
+
+  });
+
+}
+
+/**
+ * Altera status
+ */
+function alterarStatusProfessor(id, status) {
+
+  const professor = buscarProfessor(id);
+
+  if (!professor) {
+
+    return {
+      sucesso: false,
+      mensagem: "Professor não encontrado."
+    };
+
+  }
+
+  atualizarRegistro(ABAS.PROFESSORES, id, [
+
+    professor.ID,
+    professor.Nome,
+    professor.Disciplina,
+    professor.Telefone,
+    professor.Email,
+    status
+
+  ]);
+
+  return {
+    sucesso: true,
+    mensagem: "Status atualizado."
+  };
+
+}
+
+/**
+ * Total de professores
+ */
+function totalProfessores() {
+
+  return contar(ABAS.PROFESSORES);
+
+}
+
+/**
+ * Estatísticas por disciplina
+ */
+function totalPorDisciplina() {
+
+  const professores = listarProfessores();
+
+  let resultado = {};
+
+  professores.forEach(function(professor) {
+
+    if (!resultado[professor.Disciplina]) {
+      resultado[professor.Disciplina] = 0;
+    }
+
+    resultado[professor.Disciplina]++;
+
+  });
+
+  return resultado;
+
+}
+
+/**
+ * Lista disciplinas cadastradas
+ */
+function listarDisciplinasProfessor() {
+
+  const professores = listarProfessores();
+
+  const disciplinas = [];
+
+  professores.forEach(function(professor) {
+
+    if (disciplinas.indexOf(professor.Disciplina) === -1) {
+      disciplinas.push(professor.Disciplina);
+    }
+
+  });
+
+  disciplinas.sort();
+
+  return disciplinas;
+
+}
+
+/**
+ * Busca professor pelo e-mail
+ */
+function buscarProfessorEmail(email) {
+
+  const professores = listarProfessores();
+
+  for (let i = 0; i < professores.length; i++) {
+
+    if (
+      String(professores[i].Email).toLowerCase() ===
+      String(email).toLowerCase()
+    ) {
+      return professores[i];
+    }
+
+  }
+
+  return null;
+
+}
