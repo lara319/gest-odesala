@@ -1,0 +1,236 @@
+/*******************************************************
+ * ARQUIVO: Config.gs
+ * Projeto: Gestão de Sala Escolar
+ *******************************************************/
+
+/*======================================================
+=            CONFIGURAÇÕES DO SISTEMA
+======================================================*/
+
+// ID da planilha Google Sheets
+// Substitua pelo ID da sua planilha
+const ID_PLANILHA = "COLE_AQUI_O_ID_DA_PLANILHA";
+
+// Nome do sistema
+const NOME_SISTEMA = "Gestão de Sala Escolar";
+
+// Versão
+const VERSAO = "1.0.0";
+
+// Time Zone
+const TIMEZONE = Session.getScriptTimeZone();
+
+//======================================================
+// ABAS DA PLANILHA
+//======================================================
+
+const ABAS = {
+
+  USUARIOS: "USUARIOS",
+
+  ALUNOS: "ALUNOS",
+
+  PROFESSORES: "PROFESSORES",
+
+  TURMAS: "TURMAS",
+
+  DISCIPLINAS: "DISCIPLINAS",
+
+  FREQUENCIA: "FREQUENCIA",
+
+  NOTAS: "NOTAS",
+
+  ATIVIDADES: "ATIVIDADES",
+
+  OCORRENCIAS: "OCORRENCIAS"
+
+};
+
+//======================================================
+// PERFIS
+//======================================================
+
+const PERFIS = {
+
+  ADMIN: "Administrador",
+
+  PROFESSOR: "Professor",
+
+  COORDENADOR: "Coordenador"
+
+};
+
+//======================================================
+// STATUS
+//======================================================
+
+const STATUS = {
+
+  ATIVO: "ATIVO",
+
+  INATIVO: "INATIVO"
+
+};
+
+//======================================================
+// PRESENÇA
+//======================================================
+
+const PRESENCA = {
+
+  PRESENTE: "PRESENTE",
+
+  FALTA: "FALTA",
+
+  ATRASO: "ATRASO",
+
+  JUSTIFICADA: "JUSTIFICADA"
+
+};
+
+//======================================================
+// CABEÇALHOS DAS PLANILHAS
+//======================================================
+
+const CABECALHOS = {
+
+  USUARIOS: [
+    "ID",
+    "Nome",
+    "Email",
+    "Senha",
+    "Perfil",
+    "Status"
+  ],
+
+  ALUNOS: [
+    "ID",
+    "Nome",
+    "RA",
+    "Turma",
+    "Série",
+    "Nascimento",
+    "Responsável",
+    "Telefone",
+    "Status"
+  ],
+
+  PROFESSORES: [
+    "ID",
+    "Nome",
+    "Disciplina",
+    "Telefone",
+    "Email",
+    "Status"
+  ],
+
+  TURMAS: [
+    "ID",
+    "Turma",
+    "Série",
+    "Ano",
+    "Professor"
+  ],
+
+  DISCIPLINAS: [
+    "ID",
+    "Nome",
+    "Carga Horária"
+  ],
+
+  NOTAS: [
+    "ID",
+    "Aluno",
+    "Disciplina",
+    "1º Bimestre",
+    "2º Bimestre",
+    "3º Bimestre",
+    "4º Bimestre",
+    "Média"
+  ],
+
+  FREQUENCIA: [
+    "ID",
+    "Aluno",
+    "Data",
+    "Situação"
+  ],
+
+  OCORRENCIAS: [
+    "ID",
+    "Aluno",
+    "Data",
+    "Descrição",
+    "Professor"
+  ],
+
+  ATIVIDADES: [
+    "ID",
+    "Disciplina",
+    "Descrição",
+    "Data de Entrega"
+  ]
+
+};
+
+//======================================================
+// CONFIGURAÇÕES GERAIS
+//======================================================
+
+const CONFIG = {
+
+  LINHA_INICIAL: 2,
+
+  FORMATO_DATA: "dd/MM/yyyy",
+
+  FORMATO_DATA_HORA: "dd/MM/yyyy HH:mm:ss",
+
+  MAX_LINHAS: 50000
+
+};
+
+//======================================================
+// FUNÇÕES AUXILIARES
+//======================================================
+
+function getConfig() {
+
+  return {
+
+    sistema: NOME_SISTEMA,
+
+    versao: VERSAO,
+
+    timezone: TIMEZONE,
+
+    abas: ABAS,
+
+    perfis: PERFIS
+
+  };
+
+}
+
+function getIdPlanilha() {
+
+  return ID_PLANILHA;
+
+}
+
+function getNomeSistema() {
+
+  return NOME_SISTEMA;
+
+}
+
+function getVersaoSistema() {
+
+  return VERSAO;
+
+}
+
+function getAbas() {
+
+  return ABAS;
+
+}
