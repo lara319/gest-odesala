@@ -1,0 +1,294 @@
+/************************************************************
+ * ARQUIVO: Banco.gs
+ * Projeto: Gestão de Sala Escolar
+ * Responsável pela comunicação com o Google Sheets
+ ************************************************************/
+
+/**
+ * Retorna a planilha principal
+ */
+function getPlanilha() {
+  return SpreadsheetApp.openById(ID_PLANILHA);
+}
+
+/**
+ * Retorna uma aba pelo nome
+ */
+function getAba(nomeAba) {
+
+  const aba = getPlanilha().getSheetByName(nomeAba);
+
+  if (!aba) {
+    throw new Error("A aba '" + nomeAba + "' não foi encontrada.");
+  }
+
+  return aba;
+
+}
+
+/**
+ * Última linha utilizada
+ */
+function ultimaLinha(nomeAba) {
+
+  return getAba(nomeAba).getLastRow();
+
+}
+
+/**
+ * Última coluna utilizada
+ */
+function ultimaColuna(nomeAba) {
+
+  return getAba(nomeAba).getLastColumn();
+
+}
+
+/**
+ * Retorna todos os registros da aba
+ */
+function listarRegistros(nomeAba) {
+
+  const aba = getAba(nomeAba);
+
+  const dados = aba.getDataRange().getValues();
+
+  if (dados.length <= 1) {
+    return [];
+  }
+
+  const cabecalho = dados.shift();
+
+  return dados.map(function(linha){
+
+    let objeto = {};
+
+    cabecalho.forEach(function(coluna, indice){
+
+      objeto[coluna] = linha[indice];
+
+    });
+
+    return objeto;
+
+  });
+
+}
+
+/**
+ * Retorna somente os valores
+ */
+function listarValores(nomeAba){
+
+  const aba = getAba(nomeAba);
+
+  return aba.getDataRange().getValues();
+
+}
+
+/**
+ * Insere uma nova linha
+ */
+function inserirRegistro(nomeAba, dados){
+
+  const aba = getAba(nomeAba);
+
+  aba.appendRow(dados);
+
+  return true;
+
+}
+
+/**
+ * Procura uma linha pelo ID
+ */
+function localizarLinhaPorID(nomeAba,id){
+
+  const aba = getAba(nomeAba);
+
+  const valores = aba.getDataRange().getValues();
+
+  for(let i=1;i<valores.length;i++){
+
+    if(String(valores[i][0]) === String(id)){
+
+      return i+1;
+
+    }
+
+  }
+
+  return -1;
+
+}
+
+/**
+ * Atualiza um registro
+ */
+function atualizarRegistro(nomeAba,id,dados){
+
+  const linha = localizarLinhaPorID(nomeAba,id);
+
+  if(linha==-1){
+
+    return false;
+
+  }
+
+  getAba(nomeAba)
+      .getRange(linha,1,1,dados.length)
+      .setValues([dados]);
+
+  return true;
+
+}
+
+/**
+ * Remove um registro
+ */
+function excluirRegistro(nomeAba,id){
+
+  const linha = localizarLinhaPorID(nomeAba,id);
+
+  if(linha==-1){
+
+    return false;
+
+  }
+
+  getAba(nomeAba).deleteRow(linha);
+
+  return true;
+
+}
+
+/**
+ * Pesquisa registros
+ */
+function pesquisar(nomeAba,texto){
+
+  texto = String(texto).toLowerCase();
+
+  return listarRegistros(nomeAba).filter(function(item){
+
+      return JSON.stringify(item)
+      .toLowerCase()
+      .indexOf(texto)>-1;
+
+  });
+
+}
+
+/**
+ * Conta registros
+ */
+function contar(nomeAba){
+
+  return Math.max(0,getAba(nomeAba).getLastRow()-1);
+
+}
+
+/**
+ * Gera ID automático
+ */
+function gerarID(nomeAba){
+
+  const aba = getAba(nomeAba);
+
+  const ultima = aba.getLastRow();
+
+  if(ultima<=1){
+
+      return 1;
+
+  }
+
+  const ids = aba.getRange(2,1,ultima-1,1).getValues();
+
+  let maior=0;
+
+  ids.forEach(function(id){
+
+      if(Number(id[0])>maior){
+
+          maior=Number(id[0]);
+
+      }
+
+  });
+
+  return maior+1;
+
+}
+
+/**
+ * Verifica se um ID existe
+ */
+function existeID(nomeAba,id){
+
+  return localizarLinhaPorID(nomeAba,id)!=-1;
+
+}
+
+/**
+ * Limpa todos os registros
+ * Mantém o cabeçalho
+ */
+function limparTabela(nomeAba){
+
+  const aba = getAba(nomeAba);
+
+  if(aba.getLastRow()>1){
+
+      aba.getRange(
+          2,
+          1,
+          aba.getLastRow()-1,
+          aba.getLastColumn()
+      ).clearContent();
+
+  }
+
+}
+
+/**
+ * Retorna quantidade de linhas
+ */
+function quantidadeLinhas(nomeAba){
+
+  return getAba(nomeAba).getLastRow();
+
+}
+
+/**
+ * Retorna quantidade de colunas
+ */
+function quantidadeColunas(nomeAba){
+
+  return getAba(nomeAba).getLastColumn();
+
+}
+
+/**
+ * Verifica se uma aba existe
+ */
+function existeAba(nomeAba){
+
+  return getPlanilha().getSheetByName(nomeAba)!=null;
+
+}
+
+/**
+ * Lista todas as abas
+ */
+function listarAbas(){
+
+  return getPlanilha()
+        .getSheets()
+        .map(function(sheet){
+
+            return sheet.getName();
+
+        });
+
+}
