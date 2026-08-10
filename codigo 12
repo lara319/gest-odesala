@@ -1,0 +1,301 @@
+/************************************************************
+ * ARQUIVO: Atividades.gs
+ * Projeto: Gestão de Sala Escolar
+ * Controle de Atividades
+ ************************************************************/
+
+/**
+ * Lista todas as atividades
+ */
+function listarAtividades() {
+
+  return listarRegistros(ABAS.ATIVIDADES);
+
+}
+
+/**
+ * Busca atividade
+ */
+function buscarAtividade(id) {
+
+  return listarAtividades().find(function(item){
+
+    return String(item.ID) === String(id);
+
+  }) || null;
+
+}
+
+/**
+ * Cadastra atividade
+ */
+function cadastrarAtividade(dados){
+
+  validarSessao();
+
+  const id = gerarID(ABAS.ATIVIDADES);
+
+  inserirRegistro(ABAS.ATIVIDADES,[
+
+    id,
+
+    dados.titulo,
+
+    dados.descricao,
+
+    dados.disciplina,
+
+    dados.turma,
+
+    dados.professor,
+
+    dados.dataEntrega,
+
+    dados.valor,
+
+    "PENDENTE",
+
+    dados.observacoes || ""
+
+  ]);
+
+  return{
+
+    sucesso:true,
+
+    mensagem:"Atividade cadastrada.",
+
+    id:id
+
+  };
+
+}
+
+/**
+ * Atualiza atividade
+ */
+function atualizarAtividade(id,dados){
+
+  validarSessao();
+
+  atualizarRegistro(ABAS.ATIVIDADES,id,[
+
+    id,
+
+    dados.titulo,
+
+    dados.descricao,
+
+    dados.disciplina,
+
+    dados.turma,
+
+    dados.professor,
+
+    dados.dataEntrega,
+
+    dados.valor,
+
+    dados.status,
+
+    dados.observacoes
+
+  ]);
+
+  return{
+
+    sucesso:true,
+
+    mensagem:"Atividade atualizada."
+
+  };
+
+}
+
+/**
+ * Excluir atividade
+ */
+function excluirAtividade(id){
+
+  validarSessao();
+
+  excluirRegistro(ABAS.ATIVIDADES,id);
+
+  return{
+
+    sucesso:true,
+
+    mensagem:"Atividade removida."
+
+  };
+
+}
+
+/**
+ * Pesquisa atividade
+ */
+function pesquisarAtividade(texto){
+
+  return pesquisar(ABAS.ATIVIDADES,texto);
+
+}
+
+/**
+ * Lista atividades por turma
+ */
+function atividadesTurma(turma){
+
+  return listarAtividades().filter(function(item){
+
+      return item.Turma==turma;
+
+  });
+
+}
+
+/**
+ * Lista atividades por disciplina
+ */
+function atividadesDisciplina(disciplina){
+
+  return listarAtividades().filter(function(item){
+
+      return item.Disciplina==disciplina;
+
+  });
+
+}
+
+/**
+ * Lista atividades por professor
+ */
+function atividadesProfessor(professor){
+
+  return listarAtividades().filter(function(item){
+
+      return item.Professor==professor;
+
+  });
+
+}
+
+/**
+ * Atividades pendentes
+ */
+function atividadesPendentes(){
+
+  return listarAtividades().filter(function(item){
+
+      return item.Status=="PENDENTE";
+
+  });
+
+}
+
+/**
+ * Atividades entregues
+ */
+function atividadesEntregues(){
+
+  return listarAtividades().filter(function(item){
+
+      return item.Status=="ENTREGUE";
+
+  });
+
+}
+
+/**
+ * Atividades atrasadas
+ */
+function atividadesAtrasadas(){
+
+  const hoje = new Date();
+
+  return listarAtividades().filter(function(item){
+
+      if(item.Status=="ENTREGUE"){
+
+          return false;
+
+      }
+
+      return new Date(item.DataEntrega) < hoje;
+
+  });
+
+}
+
+/**
+ * Altera status
+ */
+function alterarStatusAtividade(id,status){
+
+  const atividade = buscarAtividade(id);
+
+  if(!atividade){
+
+      return{
+
+          sucesso:false,
+
+          mensagem:"Atividade não encontrada."
+
+      };
+
+  }
+
+  atualizarRegistro(ABAS.ATIVIDADES,id,[
+
+      atividade.ID,
+
+      atividade.Titulo,
+
+      atividade.Descricao,
+
+      atividade.Disciplina,
+
+      atividade.Turma,
+
+      atividade.Professor,
+
+      atividade.DataEntrega,
+
+      atividade.Valor,
+
+      status,
+
+      atividade.Observacoes
+
+  ]);
+
+  return{
+
+      sucesso:true,
+
+      mensagem:"Status atualizado."
+
+  };
+
+}
+
+/**
+ * Estatísticas
+ */
+function estatisticasAtividades(){
+
+  const lista = listarAtividades();
+
+  return{
+
+      total:lista.length,
+
+      pendentes:lista.filter(a=>a.Status=="PENDENTE").length,
+
+      entregues:lista.filter(a=>a.Status=="ENTREGUE").length,
+
+      atrasadas:atividadesAtrasadas().length
+
+  };
+
+}
