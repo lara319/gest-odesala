@@ -1,0 +1,326 @@
+/************************************************************
+ * ARQUIVO: Frequencia.gs
+ * Projeto: Gestão de Sala Escolar
+ * Controle de Frequência
+ ************************************************************/
+
+/**
+ * Lista todos os registros de frequência
+ */
+function listarFrequencias() {
+  return listarRegistros(ABAS.FREQUENCIA);
+}
+
+/**
+ * Busca frequência pelo ID
+ */
+function buscarFrequencia(id) {
+
+  const lista = listarFrequencias();
+
+  for (let i = 0; i < lista.length; i++) {
+
+    if (String(lista[i].ID) === String(id)) {
+      return lista[i];
+    }
+
+  }
+
+  return null;
+
+}
+
+/**
+ * Verifica se já existe frequência para o aluno
+ */
+function existeFrequencia(alunoId, disciplina, data) {
+
+  return listarFrequencias().some(function(item){
+
+    return (
+      String(item.AlunoID) == String(alunoId) &&
+      String(item.Disciplina) == String(disciplina) &&
+      String(item.Data) == String(data)
+    );
+
+  });
+
+}
+
+/**
+ * Registrar frequência
+ */
+function registrarFrequencia(dados){
+
+  validarSessao();
+
+  if(existeFrequencia(
+      dados.alunoId,
+      dados.disciplina,
+      dados.data
+  )){
+
+    return{
+
+      sucesso:false,
+
+      mensagem:"A frequência deste aluno já foi registrada."
+
+    };
+
+  }
+
+  const id = gerarID(ABAS.FREQUENCIA);
+
+  inserirRegistro(ABAS.FREQUENCIA,[
+
+    id,
+
+    dados.alunoId,
+
+    dados.aluno,
+
+    dados.turma,
+
+    dados.disciplina,
+
+    dados.data,
+
+    dados.situacao,
+
+    dados.observacao,
+
+    dados.professor
+
+  ]);
+
+  return{
+
+    sucesso:true,
+
+    mensagem:"Frequência registrada."
+
+  };
+
+}
+
+/**
+ * Atualizar frequência
+ */
+function atualizarFrequencia(id,dados){
+
+  validarSessao();
+
+  if(!buscarFrequencia(id)){
+
+    return{
+
+      sucesso:false,
+
+      mensagem:"Registro não encontrado."
+
+    };
+
+  }
+
+  atualizarRegistro(ABAS.FREQUENCIA,id,[
+
+    id,
+
+    dados.alunoId,
+
+    dados.aluno,
+
+    dados.turma,
+
+    dados.disciplina,
+
+    dados.data,
+
+    dados.situacao,
+
+    dados.observacao,
+
+    dados.professor
+
+  ]);
+
+  return{
+
+    sucesso:true,
+
+    mensagem:"Registro atualizado."
+
+  };
+
+}
+
+/**
+ * Excluir frequência
+ */
+function excluirFrequencia(id){
+
+  validarSessao();
+
+  excluirRegistro(ABAS.FREQUENCIA,id);
+
+  return{
+
+    sucesso:true,
+
+    mensagem:"Registro removido."
+
+  };
+
+}
+
+/**
+ * Lista frequência por aluno
+ */
+function frequenciaAluno(alunoId){
+
+  return listarFrequencias().filter(function(item){
+
+    return String(item.AlunoID)==String(alunoId);
+
+  });
+
+}
+
+/**
+ * Lista frequência por turma
+ */
+function frequenciaTurma(turma){
+
+  return listarFrequencias().filter(function(item){
+
+    return item.Turma==turma;
+
+  });
+
+}
+
+/**
+ * Lista frequência por disciplina
+ */
+function frequenciaDisciplina(disciplina){
+
+  return listarFrequencias().filter(function(item){
+
+    return item.Disciplina==disciplina;
+
+  });
+
+}
+
+/**
+ * Lista frequência por data
+ */
+function frequenciaData(data){
+
+  return listarFrequencias().filter(function(item){
+
+    return String(item.Data)==String(data);
+
+  });
+
+}
+
+/**
+ * Percentual de presença do aluno
+ */
+function percentualPresenca(alunoId){
+
+  const lista=frequenciaAluno(alunoId);
+
+  if(lista.length==0){
+
+    return 0;
+
+  }
+
+  const presentes=lista.filter(function(item){
+
+    return item.Situação=="PRESENTE";
+
+  }).length;
+
+  return Number(
+      ((presentes/lista.length)*100).toFixed(2)
+  );
+
+}
+
+/**
+ * Total de presenças
+ */
+function totalPresencas(alunoId){
+
+  return frequenciaAluno(alunoId)
+        .filter(function(item){
+
+          return item.Situação=="PRESENTE";
+
+        }).length;
+
+}
+
+/**
+ * Total de faltas
+ */
+function totalFaltas(alunoId){
+
+  return frequenciaAluno(alunoId)
+        .filter(function(item){
+
+          return item.Situação=="FALTA";
+
+        }).length;
+
+}
+
+/**
+ * Total de atrasos
+ */
+function totalAtrasos(alunoId){
+
+  return frequenciaAluno(alunoId)
+        .filter(function(item){
+
+          return item.Situação=="ATRASO";
+
+        }).length;
+
+}
+
+/**
+ * Pesquisa registros
+ */
+function pesquisarFrequencia(texto){
+
+  return pesquisar(ABAS.FREQUENCIA,texto);
+
+}
+
+/**
+ * Estatísticas gerais
+ */
+function estatisticasFrequencia(){
+
+  const lista=listarFrequencias();
+
+  return{
+
+    total:lista.length,
+
+    presentes:lista.filter(r=>r.Situação=="PRESENTE").length,
+
+    faltas:lista.filter(r=>r.Situação=="FALTA").length,
+
+    atrasos:lista.filter(r=>r.Situação=="ATRASO").length,
+
+    justificadas:lista.filter(r=>r.Situação=="JUSTIFICADA").length
+
+  };
+
+}
